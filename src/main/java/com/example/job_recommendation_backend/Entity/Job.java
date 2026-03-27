@@ -36,7 +36,7 @@ public class Job {
     @ElementCollection
     private List<String> requiredSkills;
 
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 
