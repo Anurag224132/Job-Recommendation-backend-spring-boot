@@ -8,6 +8,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -22,6 +24,8 @@ import java.util.UUID;
         name = "users"
 )
 @EntityListeners(AuditingEntityListener.class)
+@SQLDelete(sql = "UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
@@ -48,6 +52,9 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    @Builder.Default
+    private LocalDateTime deletedAt = null;
 
     private LocalDateTime lastLogin;
 

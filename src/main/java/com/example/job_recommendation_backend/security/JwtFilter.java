@@ -8,11 +8,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 @Component
@@ -41,9 +43,13 @@ public class JwtFilter extends OncePerRequestFilter {
 
             Claims claims = jwtUtil.getClaims(token);
             String email = claims.getSubject();
+            String role = claims.get("role", String.class);
+
+            org.springframework.security.core.authority.SimpleGrantedAuthority authority =
+                    new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
 
             UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(email, null, List.of());
+                    new UsernamePasswordAuthenticationToken(email, null, java.util.List.of(authority));
 
             SecurityContextHolder.getContext().setAuthentication(auth);
         }

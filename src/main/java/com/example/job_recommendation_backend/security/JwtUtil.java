@@ -14,10 +14,11 @@ public class JwtUtil {
 
     private static final String SECRET_KEY = "this_secret_key_is_made_for_job_recommendation_project_by_admin";
 
-    public String generateToken(String email, UUID userId){
+    public String generateToken(String email, UUID userId, String role){
         return Jwts.builder()
                 .setSubject(email)
                 .claim("id",userId)
+                .claim("role", role)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + 60*60*100))
                 .signWith(Keys.hmacShaKeyFor(SECRET_KEY.getBytes()), SignatureAlgorithm.HS256)

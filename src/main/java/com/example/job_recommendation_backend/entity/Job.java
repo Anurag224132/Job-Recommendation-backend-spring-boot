@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -18,6 +20,8 @@ import java.util.UUID;
         name = "jobs"
 )
 @EntityListeners(AuditingEntityListener.class)
+@SQLDelete(sql = "UPDATE jobs SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter
 @Builder
@@ -28,6 +32,9 @@ public class Job {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Builder.Default
+    private LocalDateTime deletedAt = null;
 
     @NotBlank(message = "Job title is required")
     private String title;
@@ -51,7 +58,7 @@ public class Job {
     private LocalDateTime createdAt;
 
     @LastModifiedDate
-    private LocalDateTime updateAt;
+    private LocalDateTime updatedAt;
     @Builder.Default
     private Boolean isActive=true;
     @NotBlank(message = "Company name is required")

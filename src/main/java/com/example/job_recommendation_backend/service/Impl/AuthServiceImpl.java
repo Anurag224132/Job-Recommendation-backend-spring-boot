@@ -66,11 +66,11 @@ public class AuthServiceImpl implements AuthService {
                 .name(registerUserDto.getName())
                 .email(registerUserDto.getEmail())
                 .password(passwordEncoder.encode(registerUserDto.getPassword()))
-                .role(Role.valueOf(registerUserDto.getRole()))
+                .role(Role.valueOf(registerUserDto.getRole().toLowerCase()))
                 .build();
 
         User savedUser = userRepository.save(user);
-        String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId());
+        String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getRole().name());
 
         redisTemplate.delete(key);
         log.info("User registered successfully: {}", email);
@@ -87,7 +87,7 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("Invalid credentials");
         }
 
-        String token = jwtUtil.generateToken(user.getEmail(), user.getId());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole().name());
         return new LoginResponse(token, UserResponseDto.fromEntity(user));
     }
 

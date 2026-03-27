@@ -3,6 +3,8 @@ package com.example.job_recommendation_backend.entity;
 import com.example.job_recommendation_backend.enums.InterviewStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -16,6 +18,8 @@ import java.util.UUID;
         name = "interviews"
 )
 @EntityListeners(AuditingEntityListener.class)
+@SQLDelete(sql = "UPDATE interviews SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@SQLRestriction("deleted_at IS NULL")
 @Builder
 @Getter
 @Setter
@@ -26,6 +30,9 @@ public class Interview {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Builder.Default
+    private LocalDateTime deletedAt = null;
 
     @Enumerated(EnumType.STRING)
     private InterviewStatus status;
