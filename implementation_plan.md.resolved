@@ -1,0 +1,50 @@
+# Backend Migration: Node.js to Spring Boot
+
+This plan outlines the steps to migrate all functionality from the current Node.js/Express backend to the new Spring Boot backend.
+
+## Proposed Changes
+
+### [Spring Boot Backend] [job_recommendation_backend](file:///Users/akash/Desktop/project/job_recommendation_backend)
+
+We will implement the following layers in Spring Boot to match the Node.js functionality:
+
+#### 1. Security & Authentication
+- **Node.js**: `jsonwebtoken`, `bcryptjs`
+- **Spring Boot**: `spring-boot-starter-security` with `BCryptPasswordEncoder` and a custom `JwtService` using the `jjwt` library.
+- **Status**: Needs implementation of `SecurityConfig` and `JwtFilter`.
+
+#### 2. Database Layer (Migration from MongoDB to PostgreSQL)
+- **Node.js**: `mongoose` (MongoDB)
+- **Spring Boot**: `spring-boot-starter-data-jpa` (PostgreSQL)
+- **Status**: Entities like [User](file:///Users/akash/Desktop/project/job_recommendation_backend/src/main/java/com/example/job_recommendation_backend/Entity/User.java#20-79), `Job`, `Application`, and `Interview` are already partially implemented. We need to create `Repository` interfaces for each.
+
+#### 3. Controller & Routing
+- **Node.js**: `express.Router()`
+- **Spring Boot**: `@RestController` and `@RequestMapping`
+- **Status**: Need to create Controllers for Auth, Jobs, Applications, and Interviews.
+
+#### 4. File Upload Utility
+- **Node.js**: `multer`
+- **Spring Boot**: `StandardServletMultipartResolver` (built-in) using `@RequestParam("file") MultipartFile file`.
+- **Status**: Need to implement a `FileStorageService`.
+
+#### 5. Email Service
+- **Node.js**: `nodemailer`
+- **Spring Boot**: `spring-boot-starter-mail` using `JavaMailSender`.
+- **Status**: Need to implement an `EmailService`.
+
+#### 6. External API Requests
+- **Node.js**: `axios`
+- **Spring Boot**: `RestTemplate` or `WebClient`.
+- **Status**: Need to implement clients for any external services (e.g., ML recommendation engine).
+
+## Verification Plan
+
+### Automated Tests
+- Run `./mvnw test` to ensure JPA entities and repositories are correctly mapped.
+- Implement Integration Tests for REST endpoints using `@SpringBootTest` and `MockMvc`.
+
+### Manual Verification
+- Verify that the Frontend (`Job-Recommendation-Frontend`) can successfully sign up and log in using the new Spring Boot API.
+- Test job posting and application flows.
+- Verify file uploads (resumes) are saved correctly.

@@ -34,3 +34,4 @@ build/
 
 ### Sensitive config — never commit real values ###
 src/main/resources/application.properties
+src/main/resources/application.yml
