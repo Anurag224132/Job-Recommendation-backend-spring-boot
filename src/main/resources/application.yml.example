@@ -1,0 +1,14 @@
+spring:
+  redis:
+    host:
+    port:
+  cloud:
+    aws:
+      region:
+        static:
+      credentials:
+        access-key:
+        secret-key:
+
+queue:
+  notification:
