@@ -1,6 +1,6 @@
-package com.example.job_recommendation_backend.Entity;
+package com.example.job_recommendation_backend.entity;
 
-import com.example.job_recommendation_backend.Enums.Role;
+import com.example.job_recommendation_backend.enums.Role;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;

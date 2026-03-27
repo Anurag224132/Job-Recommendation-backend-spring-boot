@@ -1,4 +1,4 @@
-package com.example.job_recommendation_backend.Entity;
+package com.example.job_recommendation_backend.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
