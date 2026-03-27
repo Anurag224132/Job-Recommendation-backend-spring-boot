@@ -1,6 +1,6 @@
 package com.example.job_recommendation_backend.Entity;
 
-import com.example.job_recommendation_backend.Enums.ApplicatonStatus;
+import com.example.job_recommendation_backend.Enums.ApplicationStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -38,7 +38,7 @@ public class Application {
     private LocalDateTime updatedAt;
 
     @Enumerated(EnumType.STRING)
-    private ApplicatonStatus status;
+    private ApplicationStatus status;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_id")
