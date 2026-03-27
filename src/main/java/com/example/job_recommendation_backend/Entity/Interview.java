@@ -43,7 +43,7 @@ public class Interview {
     private LocalDateTime updatedAt;
     private LocalDateTime completedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id")
     private User user;
 
