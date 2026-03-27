@@ -1,6 +1,6 @@
 package com.example.job_recommendation_backend.Enums;
 
-public enum ApplicatonStatus {
+public enum ApplicationStatus {
     pending,
     accepted,
     interview_scheduled,
