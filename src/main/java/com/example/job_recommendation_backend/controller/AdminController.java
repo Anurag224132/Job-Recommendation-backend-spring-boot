@@ -60,7 +60,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getPlatformMetrics());
     }
 
-    @GetMapping("/analyticsCard")
+    @GetMapping("/analytics/card")
     public ResponseEntity<AnalyticsCardDto> getAnalyticsCard(@RequestParam(defaultValue = "all") String range) {
         return ResponseEntity.ok(adminService.getAnalyticsCard(range));
     }
@@ -70,7 +70,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getUserAnalytics(id));
     }
 
-    @GetMapping("/users/search")
+    @GetMapping("/users/search-by-query")
     public ResponseEntity<Page<UserResponseDto>> searchUsers(
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
@@ -78,7 +78,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.searchUsers(query, page, size));
     }
 
-    @GetMapping("/jobs/search")
+    @GetMapping("/jobs/search-by-query")
     public ResponseEntity<Page<JobResponseDto>> searchJobs(
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
