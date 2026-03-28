@@ -40,8 +40,8 @@ public class AdminServiceImpl implements AdminService {
     @Autowired
     private InterviewRepository interviewRepository;
 
-    public Page<UserResponseDto> getAllUsers(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+    public Page<UserResponseDto> getAllUsers(Pageable pageable) {
+
         Page<UserResponseDto> users = userRepository.findAllUsers(pageable);
         return users;
     }
@@ -230,14 +230,12 @@ public class AdminServiceImpl implements AdminService {
         return "Job status updated to " + (job.getIsActive() ? "Active" : "Inactive");
     }
 
-    public Page<ApplicationResponseDto> getAllApplications(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+    public Page<ApplicationResponseDto> getAllApplications(Pageable pageable) {
         return applicationRepository.findAll(pageable)
                 .map(this::mapToApplicationResponseDto);
     }
 
-    public Page<InterviewResponseDto> getAllInterviews(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+    public Page<InterviewResponseDto> getAllInterviews(Pageable pageable) {
         return interviewRepository.findAll(pageable)
                 .map(this::mapToInterviewResponseDto);
     }

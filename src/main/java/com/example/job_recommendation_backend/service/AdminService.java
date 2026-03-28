@@ -7,7 +7,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.UUID;
 
 public interface AdminService {
-    Page<UserResponseDto> getAllUsers(int page, int size);
+    Page<UserResponseDto> getAllUsers(Pageable pageable);
 
     String deleteUser(UUID id);
 
@@ -29,9 +29,9 @@ public interface AdminService {
 
     String toggleJobStatus(UUID id);
 
-    Page<ApplicationResponseDto> getAllApplications(int page, int size);
+    Page<ApplicationResponseDto> getAllApplications(Pageable pageable);
 
-    Page<InterviewResponseDto> getAllInterviews(int page, int size);
+    Page<InterviewResponseDto> getAllInterviews(Pageable pageable);
 
     String deleteApplication(UUID id);
 

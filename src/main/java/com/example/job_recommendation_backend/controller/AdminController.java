@@ -25,17 +25,20 @@ public class AdminController {
     public ResponseEntity<Page<UserResponseDto>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(adminService.getAllUsers(page, size));
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(adminService.getAllUsers(pageable));
     }
 
     @DeleteMapping("/users/{id}")
-    public ResponseEntity<String> deleteUser(@PathVariable UUID id) {
-        return ResponseEntity.ok(adminService.deleteUser(id));
+    public ResponseEntity<ApiResponseDto> deleteUser(@PathVariable UUID id) {
+        String message = adminService.deleteUser(id);
+        return ResponseEntity.ok(new ApiResponseDto(message, true));
     }
 
     @PatchMapping("/users/{id}/role")
-    public ResponseEntity<String> changeRole(@PathVariable UUID id, @RequestParam Role role) {
-        return ResponseEntity.ok(adminService.changeRole(id, role));
+    public ResponseEntity<ApiResponseDto> changeRole(@PathVariable UUID id, @RequestParam Role role) {
+        String message = adminService.changeRole(id, role);
+        return ResponseEntity.ok(new ApiResponseDto(message, true));
     }
 
     @GetMapping("/jobs")
@@ -47,8 +50,9 @@ public class AdminController {
     }
 
     @DeleteMapping("/jobs/{id}")
-    public ResponseEntity<String> deleteJob(@PathVariable UUID id) {
-        return ResponseEntity.ok(adminService.deleteJob(id));
+    public ResponseEntity<ApiResponseDto> deleteJob(@PathVariable UUID id) {
+        String message = adminService.deleteJob(id);
+        return ResponseEntity.ok(new ApiResponseDto(message, true));
     }
 
     @GetMapping("/metrics")
@@ -83,32 +87,39 @@ public class AdminController {
     }
 
     @PatchMapping("/jobs/{id}/toggle-status")
-    public ResponseEntity<String> toggleJobStatus(@PathVariable UUID id) {
-        return ResponseEntity.ok(adminService.toggleJobStatus(id));
+    public ResponseEntity<ApiResponseDto> toggleJobStatus(@PathVariable UUID id) {
+        String message = adminService.toggleJobStatus(id);
+        return ResponseEntity.ok(new ApiResponseDto(message, true));
     }
 
     @GetMapping("/applications")
     public ResponseEntity<Page<ApplicationResponseDto>> getAllApplications(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(adminService.getAllApplications(page, size));
+
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(adminService.getAllApplications(pageable));
     }
 
     @GetMapping("/interviews")
     public ResponseEntity<Page<InterviewResponseDto>> getAllInterviews(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(adminService.getAllInterviews(page, size));
+
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(adminService.getAllInterviews(pageable));
     }
 
     @DeleteMapping("/applications/{id}")
-    public ResponseEntity<String> deleteApplication(@PathVariable UUID id) {
-        return ResponseEntity.ok(adminService.deleteApplication(id));
+    public ResponseEntity<ApiResponseDto> deleteApplication(@PathVariable UUID id) {
+        String message = adminService.deleteApplication(id);
+        return ResponseEntity.ok(new ApiResponseDto(message, true));
     }
 
     @DeleteMapping("/interviews/{id}")
-    public ResponseEntity<String> deleteInterview(@PathVariable UUID id) {
-        return ResponseEntity.ok(adminService.deleteInterview(id));
+    public ResponseEntity<ApiResponseDto> deleteInterview(@PathVariable UUID id) {
+        String message = adminService.deleteInterview(id);
+        return ResponseEntity.ok(new ApiResponseDto(message, true));
     }
 }
 
