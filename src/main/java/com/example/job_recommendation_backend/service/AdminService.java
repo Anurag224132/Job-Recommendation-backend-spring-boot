@@ -23,7 +23,7 @@ public interface AdminService {
 
     UserAnalyticsDto getUserAnalytics(UUID userId);
 
-    Page<UserResponseDto> searchUsers(String query, int page, int size);
+    Page<UserResponseDto> searchUsers(String query, Pageable pageable);
 
     Page<JobResponseDto> searchJobs(String query, int page, int size);
 

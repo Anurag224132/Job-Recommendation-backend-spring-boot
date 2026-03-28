@@ -3,6 +3,8 @@ package com.example.job_recommendation_backend.service.impl;
 import com.example.job_recommendation_backend.DTO.JobResponseDto;
 import com.example.job_recommendation_backend.DTO.PlatformMetricsDto;
 import com.example.job_recommendation_backend.DTO.UserResponseDto;
+import com.example.job_recommendation_backend.entity.Application;
+import com.example.job_recommendation_backend.entity.Interview;
 import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.enums.ApplicationStatus;
@@ -21,6 +23,8 @@ import org.springframework.stereotype.Service;
 
 import com.example.job_recommendation_backend.DTO.*;
 import com.example.job_recommendation_backend.repository.ApplicationRepository;
+import com.example.job_recommendation_backend.repository.projection.PlatformMetrics;
+import com.example.job_recommendation_backend.repository.projection.UserActivity;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -93,13 +97,13 @@ public class AdminServiceImpl implements AdminService {
     }
 
     public PlatformMetricsDto getPlatformMetrics() {
-        Map<String, Long> metrics = userRepository.getPlatformMetrics();
+        PlatformMetrics metrics = userRepository.getPlatformMetrics();
 
         return PlatformMetricsDto.builder()
-                .totalUsers(metrics.getOrDefault("totalusers", 0L))
-                .totalRecruiters(metrics.getOrDefault("totalrecruiters", 0L))
-                .totalStudents(metrics.getOrDefault("totalstudents", 0L))
-                .totalJobs(metrics.getOrDefault("totaljobs", 0L))
+                .totalUsers(metrics.getTotalUsers())
+                .totalRecruiters(metrics.getTotalRecruiters())
+                .totalStudents(metrics.getTotalStudents())
+                .totalJobs(metrics.getTotalJobs())
                 .build();
     }
 
@@ -130,15 +134,15 @@ public class AdminServiceImpl implements AdminService {
         long adminCount = userRepository.countUsers(Role.admin);
 
         // Get activity data
-        List<Map<String, Object>> activityData = userRepository.getUserActivityByDay(startDate, now);
+        List<UserActivity> activityData = userRepository.getUserActivityByDay(startDate, now);
 
         // Map activity data to DTO
         List<String> days = Arrays.asList("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday");
         List<UserActivityDto> userActivity = days.stream()
                 .map(dayName -> {
                     long count = activityData.stream()
-                            .filter(m -> dayName.equalsIgnoreCase(((String) m.get("day")).trim()))
-                            .mapToLong(m -> ((Number) m.get("count")).longValue())
+                            .filter(m -> dayName.equalsIgnoreCase(m.getDay().trim()))
+                            .mapToLong(UserActivity::getCount)
                             .findFirst()
                             .orElse(0L);
 
@@ -211,10 +215,8 @@ public class AdminServiceImpl implements AdminService {
         return builder.recentActivities(new ArrayList<>()).build();
     }
 
-    public Page<UserResponseDto> searchUsers(String query, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return userRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query, pageable)
-                .map(user -> new UserResponseDto(user.getId(), user.getName(), user.getEmail(), user.getRole()));
+    public Page<UserResponseDto> searchUsers(String query, Pageable pageable) {
+        return userRepository.searchUsers(query, pageable);
     }
 
     public Page<JobResponseDto> searchJobs(String query, int page, int size) {
@@ -241,20 +243,20 @@ public class AdminServiceImpl implements AdminService {
     }
 
     public String deleteApplication(UUID id) {
-        com.example.job_recommendation_backend.entity.Application app = applicationRepository.findById(id)
+        Application app = applicationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Application not found"));
         applicationRepository.delete(app);
         return "Application deleted successfully";
     }
 
     public String deleteInterview(UUID id) {
-        com.example.job_recommendation_backend.entity.Interview interview = interviewRepository.findById(id)
+        Interview interview = interviewRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Interview not found"));
         interviewRepository.delete(interview);
         return "Interview deleted successfully";
     }
 
-    private ApplicationResponseDto mapToApplicationResponseDto(com.example.job_recommendation_backend.entity.Application app) {
+    private ApplicationResponseDto mapToApplicationResponseDto(Application app) {
         return ApplicationResponseDto.builder()
                 .id(app.getId())
                 .studentName(app.getUser().getName())
@@ -266,7 +268,7 @@ public class AdminServiceImpl implements AdminService {
                 .build();
     }
 
-    private InterviewResponseDto mapToInterviewResponseDto(com.example.job_recommendation_backend.entity.Interview interview) {
+    private InterviewResponseDto mapToInterviewResponseDto(Interview interview) {
         return InterviewResponseDto.builder()
                 .id(interview.getId())
                 .studentName(interview.getUser().getName())

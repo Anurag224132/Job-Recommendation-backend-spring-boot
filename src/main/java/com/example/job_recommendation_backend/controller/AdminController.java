@@ -75,7 +75,8 @@ public class AdminController {
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(adminService.searchUsers(query, page, size));
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(adminService.searchUsers(query, pageable));
     }
 
     @GetMapping("/jobs/search-by-query")

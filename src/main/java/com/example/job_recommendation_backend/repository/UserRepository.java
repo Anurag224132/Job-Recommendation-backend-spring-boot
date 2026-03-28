@@ -3,6 +3,8 @@ package com.example.job_recommendation_backend.repository;
 import com.example.job_recommendation_backend.DTO.UserResponseDto;
 import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.enums.Role;
+import com.example.job_recommendation_backend.repository.projection.PlatformMetrics;
+import com.example.job_recommendation_backend.repository.projection.UserActivity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -13,7 +15,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,8 +26,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT new com.example.job_recommendation_backend.DTO.UserResponseDto(u.id, u.name, u.email, u.role) FROM User u")
     Page<UserResponseDto> findAllUsers(Pageable pageable);
 
-    @Query(value = "SELECT * FROM users WHERE deleted_at IS NOT NULL", nativeQuery = true)
-    List<User> findAllDeletedUsers();
 
     @Query("SELECT COUNT(u) FROM User u WHERE (:role IS NULL OR u.role = :role)")
     long countUsers(@Param("role") Role role);
@@ -40,7 +39,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                 FROM users
                 WHERE deleted_at IS NULL
             """, nativeQuery = true)
-    Map<String, Long> getPlatformMetrics();
+    PlatformMetrics getPlatformMetrics();
 
     @Query(value = "SELECT trim(to_char(ula.login_timestamp, 'Day')) as day, COUNT(*) as count " +
             "FROM user_login_activity ula " +
@@ -48,10 +47,17 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             "WHERE ula.login_timestamp BETWEEN :startDate AND :endDate " +
             "AND u.deleted_at IS NULL " +
             "GROUP BY extract(DOW from ula.login_timestamp), day " +
-            "ORDER BY extract(DOW from ula.login_timestamp)", 
+            "ORDER BY extract(DOW from ula.login_timestamp)",
             nativeQuery = true)
-    List<Map<String, Object>> getUserActivityByDay(@Param("startDate") LocalDateTime startDate, 
-                                                  @Param("endDate") LocalDateTime endDate);
+    List<UserActivity> getUserActivityByDay(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    Page<User> findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String name, String email, Pageable pageable);
+    @Query("""
+            SELECT new com.example.job_recommendation_backend.DTO.UserResponseDto(
+                u.id, u.name, u.email, u.role
+            )
+            FROM User u
+            WHERE LOWER(u.name) LIKE LOWER(CONCAT('%', :query, '%'))
+               OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))
+            """)
+    Page<UserResponseDto> searchUsers(@Param("query") String query, Pageable pageable);
 }
