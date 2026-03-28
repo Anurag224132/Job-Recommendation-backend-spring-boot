@@ -3,7 +3,6 @@ package com.example.job_recommendation_backend.repository;
 import com.example.job_recommendation_backend.DTO.UserResponseDto;
 import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.enums.Role;
-import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -11,6 +10,8 @@ import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import org.springframework.data.repository.query.Param;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,4 +41,15 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                 WHERE deleted_at IS NULL
             """, nativeQuery = true)
     Map<String, Long> getPlatformMetrics();
+
+    @Query(value = "SELECT trim(to_char(ula.login_timestamp, 'Day')) as day, COUNT(*) as count " +
+            "FROM user_login_activity ula " +
+            "JOIN users u ON ula.user_id = u.id " +
+            "WHERE ula.login_timestamp BETWEEN :startDate AND :endDate " +
+            "AND u.deleted_at IS NULL " +
+            "GROUP BY extract(DOW from ula.login_timestamp), day " +
+            "ORDER BY extract(DOW from ula.login_timestamp)", 
+            nativeQuery = true)
+    List<Map<String, Object>> getUserActivityByDay(@Param("startDate") LocalDateTime startDate, 
+                                                  @Param("endDate") LocalDateTime endDate);
 }
