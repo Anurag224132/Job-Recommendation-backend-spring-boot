@@ -52,4 +52,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             nativeQuery = true)
     List<Map<String, Object>> getUserActivityByDay(@Param("startDate") LocalDateTime startDate, 
                                                   @Param("endDate") LocalDateTime endDate);
+
+    Page<User> findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String name, String email, Pageable pageable);
 }

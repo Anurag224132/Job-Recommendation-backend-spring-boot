@@ -3,7 +3,6 @@ package com.example.job_recommendation_backend.service.impl;
 import com.example.job_recommendation_backend.DTO.JobResponseDto;
 import com.example.job_recommendation_backend.DTO.PlatformMetricsDto;
 import com.example.job_recommendation_backend.DTO.UserResponseDto;
-import com.example.job_recommendation_backend.entity.Application;
 import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.enums.ApplicationStatus;
@@ -122,7 +121,6 @@ public class AdminServiceImpl implements AdminService {
                 startDate = LocalDateTime.of(1970, 1, 1, 0, 0);
         }
 
-
         long totalUsers = userRepository.count();
         long totalJobs = jobRepository.count();
         long totalApplications = applicationRepository.count();
@@ -162,24 +160,26 @@ public class AdminServiceImpl implements AdminService {
                 .build();
     }
 
-    public UserAnalyticsDto getUserAnalytics(UUID userId){
-        User user = userRepository.findById(userId).
-                orElseThrow(()-> new RuntimeException("User not found"));
+    public UserAnalyticsDto getUserAnalytics(UUID userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
 
         UserAnalyticsDto.UserAnalyticsDtoBuilder builder = UserAnalyticsDto.builder()
                 .userId(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
-                .lastActive((user.getLastLogin().isEmpty())?user.getUpdatedAt():user.getLastLogin().get(user.getLastLogin().size()-1))
+                .lastActive((user.getLastLogin().isEmpty()) ? user.getUpdatedAt()
+                        : user.getLastLogin().get(user.getLastLogin().size() - 1))
                 .createdAt(user.getCreatedAt())
                 .skills(user.getSkills())
                 .profileCompleted(calculateProfileCompletion(user));
 
-        if(user.getRole() == Role.student){
+        if (user.getRole() == Role.student) {
             long jobsApplied = applicationRepository.countApplicationsByUserId(user.getId());
-            long jobsRejected = applicationRepository.countApplicationsByUserIdAndStatus(user.getId(), ApplicationStatus.rejected);
-            long interviewed = interviewRepository.countInterviewByUserIdAndStatus(user.getId(), InterviewStatus.completed);
+            long jobsRejected = applicationRepository.countApplicationsByUserIdAndStatus(user.getId(),
+                    ApplicationStatus.rejected);
+            long interviewed = interviewRepository.countInterviewByUserIdAndStatus(user.getId(),
+                    InterviewStatus.completed);
 
             builder.coursesEnrolled(0L)
                     .jobsApplied(jobsApplied)
@@ -188,7 +188,7 @@ public class AdminServiceImpl implements AdminService {
                     .rejectionRate(jobsApplied > 0 ? (int) Math.round((double) jobsRejected / jobsApplied * 100) : 0)
                     .interviewRate(jobsApplied > 0 ? (int) Math.round((double) interviewed / jobsApplied * 100) : 0);
 
-        }else if(user.getRole()== Role.recruiter){
+        } else if (user.getRole() == Role.recruiter) {
             Object[] result = jobRepository.getRecruiterAnalytics(userId);
 
             long jobsPosted = ((Number) result[0]).longValue();
@@ -196,87 +196,100 @@ public class AdminServiceImpl implements AdminService {
             long rejected = ((Number) result[2]).longValue();
             long interviewsScheduled = ((Number) result[3]).longValue();
 
-            builder.jobsPosted((int)jobsPosted)
+            builder.jobsPosted((int) jobsPosted)
                     .totalApplications(totalApplications)
                     .rejected(rejected)
                     .interviewsScheduled(interviewsScheduled)
-                    .rejectionRate(totalApplications > 0 ? (int) Math.round((double) rejected / totalApplications * 100) : 0)
-                    .interviewRate(totalApplications > 0 ? (int) Math.round((double) interviewsScheduled / totalApplications * 100) : 0);
+                    .rejectionRate(
+                            totalApplications > 0 ? (int) Math.round((double) rejected / totalApplications * 100) : 0)
+                    .interviewRate(totalApplications > 0
+                            ? (int) Math.round((double) interviewsScheduled / totalApplications * 100)
+                            : 0);
 
         }
 
         return builder.recentActivities(new ArrayList<>()).build();
     }
 
-    public JobDetailsDto getJobDetails(UUID jobId) {
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+    public Page<UserResponseDto> searchUsers(String query, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return userRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query, pageable)
+                .map(user -> new UserResponseDto(user.getId(), user.getName(), user.getEmail(), user.getRole()));
+    }
 
-        List<Application> applications = applicationRepository.findAllByJobId(jobId);
-        List<String> jobSkills = job.getRequiredSkills() != null ? job.getRequiredSkills() : new ArrayList<>();
+    public Page<JobResponseDto> searchJobs(String query, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return jobRepository.findByTitleContainingIgnoreCaseOrCompanyNameContainingIgnoreCase(query, query, pageable)
+                .map(this::mapToResponseDto);
+    }
 
-        List<JobDetailsDto.TopApplicantDto> applicantScores = applications.stream().map(app -> {
-            User applicant = app.getUser();
-            List<String> userSkills = applicant.getSkills() != null ? applicant.getSkills() : new ArrayList<>();
-            
-            int matchScore = 0;
-            if (!jobSkills.isEmpty()) {
-                long matches = jobSkills.stream()
-                        .filter(userSkills::contains)
-                        .count();
-                matchScore = (int) Math.round((double) matches / jobSkills.size() * 100);
-            }
+    public String toggleJobStatus(UUID id) {
+        Job job = jobRepository.findById(id).orElseThrow(() -> new RuntimeException("Job not found"));
+        job.setIsActive(!job.getIsActive());
+        jobRepository.save(job);
+        return "Job status updated to " + (job.getIsActive() ? "Active" : "Inactive");
+    }
 
-            return JobDetailsDto.TopApplicantDto.builder()
-                    .name(applicant.getName())
-                    .email(applicant.getEmail())
-                    .matchScore(matchScore)
-                    .status(app.getStatus())
-                    .build();
-        }).collect(Collectors.toList());
+    public Page<ApplicationResponseDto> getAllApplications(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return applicationRepository.findAll(pageable)
+                .map(this::mapToApplicationResponseDto);
+    }
 
-        int totalScore = applicantScores.stream().mapToInt(JobDetailsDto.TopApplicantDto::getMatchScore).sum();
-        int averageMatchScore = applications.isEmpty() ? 0 : Math.round((float) totalScore / applications.size());
+    public Page<InterviewResponseDto> getAllInterviews(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return interviewRepository.findAll(pageable)
+                .map(this::mapToInterviewResponseDto);
+    }
 
-        List<JobDetailsDto.TopApplicantDto> topApplicants = applicantScores.stream()
-                .sorted((a, b) -> b.getMatchScore() - a.getMatchScore())
-                .limit(5)
-                .collect(Collectors.toList());
+    public String deleteApplication(UUID id) {
+        com.example.job_recommendation_backend.entity.Application app = applicationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Application not found"));
+        applicationRepository.delete(app);
+        return "Application deleted successfully";
+    }
 
-        return JobDetailsDto.builder()
-                .id(job.getId())
-                .title(job.getTitle())
-                .description(job.getDescription())
-                .requiredSkills(jobSkills)
-                .location(job.getLocation())
-                .salary(job.getSalary())
-                .type(job.getType())
-                .experience(job.getExperience())
-                .remote(job.getRemote())
-                .isActive(job.getIsActive())
-                .companyName(job.getCompanyName())
-                .createdAt(job.getCreatedAt())
-                .recruiter(JobResponseDto.RecruiterDto.builder()
-                        .name(job.getUser().getName())
-                        .email(job.getUser().getEmail())
-                        .build())
-                .applications(applications.size())
-                .averageMatchScore(averageMatchScore)
-                .topApplicants(topApplicants)
+    public String deleteInterview(UUID id) {
+        com.example.job_recommendation_backend.entity.Interview interview = interviewRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Interview not found"));
+        interviewRepository.delete(interview);
+        return "Interview deleted successfully";
+    }
+
+    private ApplicationResponseDto mapToApplicationResponseDto(com.example.job_recommendation_backend.entity.Application app) {
+        return ApplicationResponseDto.builder()
+                .id(app.getId())
+                .studentName(app.getUser().getName())
+                .jobTitle(app.getJob().getTitle())
+                .companyName(app.getJob().getCompanyName())
+                .status(app.getStatus())
+                .fitScore(app.getFitScore())
+                .createdAt(app.getCreatedAt())
                 .build();
     }
 
-    private int calculateProfileCompletion(User user){
+    private InterviewResponseDto mapToInterviewResponseDto(com.example.job_recommendation_backend.entity.Interview interview) {
+        return InterviewResponseDto.builder()
+                .id(interview.getId())
+                .studentName(interview.getUser().getName())
+                .jobTitle(interview.getJob().getTitle())
+                .status(interview.getStatus())
+                .score(interview.getScore())
+                .createdAt(interview.getCreatedAt())
+                .build();
+    }
+
+    private int calculateProfileCompletion(User user) {
         int completed = 0;
         List<Boolean> checks = List.of(
                 isValidField(user.getName()),
                 user.getSkills() != null && !user.getSkills().isEmpty(),
                 isValidField(user.getResumePath()),
                 isValidField(user.getProfilePicture()),
-                isValidField(user.getBio())
-        );
-        for(boolean check : checks){
-            if(check) completed++;
+                isValidField(user.getBio()));
+        for (boolean check : checks) {
+            if (check)
+                completed++;
         }
         return (completed * 100) / checks.size();
     }

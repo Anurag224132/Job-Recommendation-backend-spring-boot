@@ -61,13 +61,55 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAnalyticsCard(range));
     }
 
-    @GetMapping("/users/{userId}/analytics")
-    public ResponseEntity<UserAnalyticsDto> getUserAnalytics(@PathVariable UUID userId) {
-        return ResponseEntity.ok(adminService.getUserAnalytics(userId));
+    @GetMapping("/users/{id}/analytics")
+    public ResponseEntity<UserAnalyticsDto> getUserAnalytics(@PathVariable UUID id) {
+        return ResponseEntity.ok(adminService.getUserAnalytics(id));
     }
 
-    @GetMapping("/jobs/{jobId}/details")
-    public ResponseEntity<JobDetailsDto> getJobDetails(@PathVariable UUID jobId) {
-        return ResponseEntity.ok(adminService.getJobDetails(jobId));
+    @GetMapping("/users/search")
+    public ResponseEntity<Page<UserResponseDto>> searchUsers(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(adminService.searchUsers(query, page, size));
+    }
+
+    @GetMapping("/jobs/search")
+    public ResponseEntity<Page<JobResponseDto>> searchJobs(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(adminService.searchJobs(query, page, size));
+    }
+
+    @PatchMapping("/jobs/{id}/toggle-status")
+    public ResponseEntity<String> toggleJobStatus(@PathVariable UUID id) {
+        return ResponseEntity.ok(adminService.toggleJobStatus(id));
+    }
+
+    @GetMapping("/applications")
+    public ResponseEntity<Page<ApplicationResponseDto>> getAllApplications(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(adminService.getAllApplications(page, size));
+    }
+
+    @GetMapping("/interviews")
+    public ResponseEntity<Page<InterviewResponseDto>> getAllInterviews(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(adminService.getAllInterviews(page, size));
+    }
+
+    @DeleteMapping("/applications/{id}")
+    public ResponseEntity<String> deleteApplication(@PathVariable UUID id) {
+        return ResponseEntity.ok(adminService.deleteApplication(id));
+    }
+
+    @DeleteMapping("/interviews/{id}")
+    public ResponseEntity<String> deleteInterview(@PathVariable UUID id) {
+        return ResponseEntity.ok(adminService.deleteInterview(id));
     }
 }
+
+    
