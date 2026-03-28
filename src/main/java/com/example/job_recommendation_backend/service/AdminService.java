@@ -25,7 +25,7 @@ public interface AdminService {
 
     Page<UserResponseDto> searchUsers(String query, Pageable pageable);
 
-    Page<JobResponseDto> searchJobs(String query, int page, int size);
+    Page<JobResponseDto> searchJobs(String query, Pageable pageable);
 
     String toggleJobStatus(UUID id);
 

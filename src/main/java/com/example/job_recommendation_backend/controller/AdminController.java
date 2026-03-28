@@ -60,7 +60,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getPlatformMetrics());
     }
 
-    @GetMapping("/analytics/card")
+    @GetMapping("/analytics")
     public ResponseEntity<AnalyticsCardDto> getAnalyticsCard(@RequestParam(defaultValue = "all") String range) {
         return ResponseEntity.ok(adminService.getAnalyticsCard(range));
     }
@@ -70,7 +70,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getUserAnalytics(id));
     }
 
-    @GetMapping("/users/search-by-query")
+    @GetMapping("/users/search")
     public ResponseEntity<Page<UserResponseDto>> searchUsers(
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
@@ -79,12 +79,13 @@ public class AdminController {
         return ResponseEntity.ok(adminService.searchUsers(query, pageable));
     }
 
-    @GetMapping("/jobs/search-by-query")
+    @GetMapping("/jobs/search")
     public ResponseEntity<Page<JobResponseDto>> searchJobs(
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(adminService.searchJobs(query, page, size));
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(adminService.searchJobs(query, pageable));
     }
 
     @PatchMapping("/jobs/{id}/toggle-status")
@@ -94,19 +95,14 @@ public class AdminController {
     }
 
     @GetMapping("/applications")
-    public ResponseEntity<Page<ApplicationResponseDto>> getAllApplications(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-
+    public ResponseEntity<Page<ApplicationResponseDto>> getAllApplications(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(adminService.getAllApplications(pageable));
     }
 
     @GetMapping("/interviews")
     public ResponseEntity<Page<InterviewResponseDto>> getAllInterviews(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(adminService.getAllInterviews(pageable));
     }
