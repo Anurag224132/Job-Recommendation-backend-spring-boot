@@ -3,7 +3,7 @@ package com.example.job_recommendation_backend.repository;
 import com.example.job_recommendation_backend.entity.Interview;
 import com.example.job_recommendation_backend.enums.ApplicationStatus;
 import com.example.job_recommendation_backend.enums.InterviewStatus;
-import io.lettuce.core.dynamic.annotation.Param;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
