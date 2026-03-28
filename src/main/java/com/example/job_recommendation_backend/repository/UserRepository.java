@@ -2,7 +2,7 @@ package com.example.job_recommendation_backend.repository;
 
 import com.example.job_recommendation_backend.DTO.UserResponseDto;
 import com.example.job_recommendation_backend.entity.User;
-import com.example.job_recommendation_backend.enums.Role;
+import com.example.job_recommendation_backend.repository.projection.AnalyticsCounts;
 import com.example.job_recommendation_backend.repository.projection.PlatformMetrics;
 import com.example.job_recommendation_backend.repository.projection.UserActivity;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,7 +11,6 @@ import org.springframework.stereotype.Repository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-
 import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,10 +24,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT new com.example.job_recommendation_backend.DTO.UserResponseDto(u.id, u.name, u.email, u.role) FROM User u")
     Page<UserResponseDto> findAllUsers(Pageable pageable);
-
-
-    @Query("SELECT COUNT(u) FROM User u WHERE (:role IS NULL OR u.role = :role)")
-    long countUsers(@Param("role") Role role);
 
     @Query(value = """
                 SELECT
@@ -60,4 +55,17 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))
             """)
     Page<UserResponseDto> searchUsers(@Param("query") String query, Pageable pageable);
+
+    @Query(value = """
+                SELECT
+                    COUNT(*) as totalUsers,
+                    SUM(CASE WHEN role = 'student' THEN 1 ELSE 0 END) as studentCount,
+                    SUM(CASE WHEN role = 'recruiter' THEN 1 ELSE 0 END) as recruiterCount,
+                    SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) as adminCount,
+                    (SELECT COUNT(*) FROM jobs WHERE deleted_at IS NULL) as totalJobs,
+                    (SELECT COUNT(*) FROM applications WHERE deleted_at IS NULL) as totalApplications
+                FROM users
+                WHERE deleted_at IS NULL
+            """, nativeQuery = true)
+    AnalyticsCounts getAnalyticsCounts();
 }

@@ -1,8 +1,9 @@
 package com.example.job_recommendation_backend.repository;
 
+import com.example.job_recommendation_backend.DTO.InterviewResponseDto;
 import com.example.job_recommendation_backend.entity.Interview;
-import com.example.job_recommendation_backend.enums.InterviewStatus;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -13,6 +14,18 @@ import java.util.UUID;
 public interface InterviewRepository extends JpaRepository<Interview, UUID> {
 
 
-    @Query(" SELECT COUNT(interview) FROM Interview interview WHERE interview.user.id = :userId and interview.status = :status")
-    long countInterviewByUserIdAndStatus(@Param("userId") UUID userId, @Param("status") InterviewStatus status);
+    @Query("""
+            SELECT new com.example.job_recommendation_backend.DTO.InterviewResponseDto(
+                i.id,
+                u.name,
+                j.title,
+                i.status,
+                i.score,
+                i.createdAt
+            )
+            FROM Interview i
+            JOIN i.user u
+            JOIN i.job j
+            """)
+    Page<InterviewResponseDto> findAllInterviews(Pageable pageable);
 }
