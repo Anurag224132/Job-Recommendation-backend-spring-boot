@@ -219,8 +219,7 @@ public class AdminServiceImpl implements AdminService {
         return userRepository.searchUsers(query, pageable);
     }
 
-    public Page<JobResponseDto> searchJobs(String query, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+    public Page<JobResponseDto> searchJobs(String query, Pageable pageable) {
         return jobRepository.findByTitleContainingIgnoreCaseOrCompanyNameContainingIgnoreCase(query, query, pageable)
                 .map(this::mapToResponseDto);
     }
