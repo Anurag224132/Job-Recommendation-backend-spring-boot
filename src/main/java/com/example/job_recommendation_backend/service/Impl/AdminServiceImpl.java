@@ -7,8 +7,6 @@ import com.example.job_recommendation_backend.entity.Application;
 import com.example.job_recommendation_backend.entity.Interview;
 import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.entity.User;
-import com.example.job_recommendation_backend.enums.ApplicationStatus;
-import com.example.job_recommendation_backend.enums.InterviewStatus;
 import com.example.job_recommendation_backend.enums.Role;
 import com.example.job_recommendation_backend.repository.InterviewRepository;
 import com.example.job_recommendation_backend.repository.JobRepository;
@@ -50,10 +48,10 @@ public class AdminServiceImpl implements AdminService {
     }
 
     public String deleteUser(UUID id) {
-        if (!userRepository.existsById(id)) {
-            throw new RuntimeException("User not found");
-        }
-        userRepository.deleteById(id);
+        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        user.setDeletedAt(LocalDateTime.now());
+        userRepository.save(user);
+
         return "User deleted successfully";
     }
 
@@ -65,16 +63,15 @@ public class AdminServiceImpl implements AdminService {
             return "Role is already " + role;
         }
         if (user.getRole() == Role.recruiter && role != Role.recruiter) {
-            jobRepository.detachJobsFromUser(id);
+            jobRepository.softDeleteJobsByUser(id);
         }
 
         user.setRole(role);
-
+        userRepository.save(user);
         return "User role updated successfully";
     }
 
     public Page<JobResponseDto> getAllJobs(Pageable pageable) {
-//        return jobRepository.findAllJobs(pageable);
         Page<Job> jobs = jobRepository.findAllWithUser(pageable);
 
         return jobs.map(job -> JobResponseDto.builder()
@@ -92,20 +89,20 @@ public class AdminServiceImpl implements AdminService {
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())
                 .recruiter(
-                        RecruiterDto.builder()
+                        job.getUser() != null
+                                ? RecruiterDto.builder()
                                 .name(job.getUser().getName())
                                 .email(job.getUser().getEmail())
                                 .build()
+                                : null
                 )
                 .build());
     }
 
     public String deleteJob(UUID id) {
-        if (!jobRepository.existsById(id)) {
-            throw new RuntimeException("Job not found");
-        }
-
-        jobRepository.deleteById(id);
+        Job job = jobRepository.findById(id).orElseThrow(() -> new RuntimeException("Job not found"));
+        job.setDeletedAt(LocalDateTime.now());
+        jobRepository.save(job);
         return "Job deleted successfully";
     }
 
@@ -251,10 +248,12 @@ public class AdminServiceImpl implements AdminService {
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())
                 .recruiter(
-                        RecruiterDto.builder()
+                        job.getUser() != null
+                                ? RecruiterDto.builder()
                                 .name(job.getUser().getName())
                                 .email(job.getUser().getEmail())
                                 .build()
+                                : null
                 )
                 .build());
     }
@@ -277,18 +276,17 @@ public class AdminServiceImpl implements AdminService {
 
     public String deleteApplication(UUID id) {
 
-        if (!applicationRepository.existsById(id)) {
-            throw new RuntimeException("Application not found");
-        }
-        applicationRepository.deleteById(id);
+        Application application = applicationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Application not found"));
+        application.setDeletedAt(LocalDateTime.now());
+        applicationRepository.save(application);
         return "Application deleted successfully";
     }
 
     public String deleteInterview(UUID id) {
-        if (!interviewRepository.existsById(id)) {
-            throw new RuntimeException("Interview not found");
-        }
-        interviewRepository.deleteById(id);
+        Interview interview = interviewRepository.findById(id).orElseThrow(() -> new RuntimeException("Interview not found"));
+        interview.setDeletedAt(LocalDateTime.now());
+        interviewRepository.save(interview);
         return "Interview deleted successfully";
     }
 
@@ -304,7 +302,7 @@ public class AdminServiceImpl implements AdminService {
             if (check)
                 completed++;
         }
-        return (completed * 100) / checks.size();
+        return (int) Math.round((completed * 100.0) / checks.size());
     }
 
     private boolean isValidField(String field) {

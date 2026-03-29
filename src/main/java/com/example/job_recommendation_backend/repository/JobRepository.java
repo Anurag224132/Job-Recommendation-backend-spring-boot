@@ -61,5 +61,5 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
     @Modifying
     @Transactional
     @Query("UPDATE Job j SET j.deletedAt = CURRENT_TIMESTAMP WHERE j.user.id = :userId")
-    void detachJobsFromUser(@Param("userId") UUID userId);
+    void softDeleteJobsByUser(@Param("userId") UUID userId);
 }

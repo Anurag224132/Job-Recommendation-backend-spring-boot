@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -36,7 +37,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             """, nativeQuery = true)
     PlatformMetrics getPlatformMetrics();
 
-    @Query(value = "SELECT trim(to_char(ula.login_timestamp, 'Day')) as day, COUNT(*) as count " +
+    @Query(value = "SELECT trim(to_char(ula.login_timestamp, 'Dy')) as day, COUNT(*) as count " +
             "FROM user_login_activity ula " +
             "JOIN users u ON ula.user_id = u.id " +
             "WHERE ula.login_timestamp BETWEEN :startDate AND :endDate " +
@@ -47,12 +48,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<UserActivity> getUserActivityByDay(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     @Query("""
-            SELECT new com.example.job_recommendation_backend.DTO.UserResponseDto(
-                u.id, u.name, u.email, u.role
-            )
+            SELECT new com.example.job_recommendation_backend.DTO.UserResponseDto(u.id, u.name, u.email, u.role)
             FROM User u
-            WHERE LOWER(u.name) LIKE LOWER(CONCAT('%', :query, '%'))
-               OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))
+            WHERE (
+                LOWER(u.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))
+            )
             """)
     Page<UserResponseDto> searchUsers(@Param("query") String query, Pageable pageable);
 
