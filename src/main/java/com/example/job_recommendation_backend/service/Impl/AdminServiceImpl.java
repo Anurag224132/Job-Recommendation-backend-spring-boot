@@ -1,4 +1,4 @@
-package com.example.job_recommendation_backend.service.impl;
+package com.example.job_recommendation_backend.service.Impl;
 
 import com.example.job_recommendation_backend.DTO.JobResponseDto;
 import com.example.job_recommendation_backend.DTO.PlatformMetricsDto;
@@ -74,7 +74,30 @@ public class AdminServiceImpl implements AdminService {
     }
 
     public Page<JobResponseDto> getAllJobs(Pageable pageable) {
-        return jobRepository.findAllJobs(pageable);
+//        return jobRepository.findAllJobs(pageable);
+        Page<Job> jobs = jobRepository.findAllWithUser(pageable);
+
+        return jobs.map(job -> JobResponseDto.builder()
+                .id(job.getId())
+                .title(job.getTitle())
+                .description(job.getDescription())
+                .requiredSkills(job.getRequiredSkills())
+                .location(job.getLocation())
+                .salary(job.getSalary())
+                .type(job.getType())
+                .experience(job.getExperience())
+                .remote(job.getRemote())
+                .isActive(job.getIsActive())
+                .companyName(job.getCompanyName())
+                .createdAt(job.getCreatedAt())
+                .updatedAt(job.getUpdatedAt())
+                .recruiter(
+                        RecruiterDto.builder()
+                                .name(job.getUser().getName())
+                                .email(job.getUser().getEmail())
+                                .build()
+                )
+                .build());
     }
 
     public String deleteJob(UUID id) {
@@ -210,7 +233,30 @@ public class AdminServiceImpl implements AdminService {
     }
 
     public Page<JobResponseDto> searchJobs(String query, Pageable pageable) {
-        return jobRepository.searchJobs(query, pageable);
+//        return jobRepository.searchJobs(query, pageable);
+        Page<Job> jobs = jobRepository.searchJobsWithUser(query, pageable);
+
+        return jobs.map(job -> JobResponseDto.builder()
+                .id(job.getId())
+                .title(job.getTitle())
+                .description(job.getDescription())
+                .requiredSkills(job.getRequiredSkills())
+                .location(job.getLocation())
+                .salary(job.getSalary())
+                .type(job.getType())
+                .experience(job.getExperience())
+                .remote(job.getRemote())
+                .isActive(job.getIsActive())
+                .companyName(job.getCompanyName())
+                .createdAt(job.getCreatedAt())
+                .updatedAt(job.getUpdatedAt())
+                .recruiter(
+                        RecruiterDto.builder()
+                                .name(job.getUser().getName())
+                                .email(job.getUser().getEmail())
+                                .build()
+                )
+                .build());
     }
 
     public String toggleJobStatus(UUID id) {

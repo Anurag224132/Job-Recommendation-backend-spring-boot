@@ -24,13 +24,4 @@ public class JobResponseDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private RecruiterDto recruiter;
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class RecruiterDto {
-        private String name;
-        private String email;
-    }
 }

@@ -5,6 +5,7 @@ import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.repository.projection.RecruiterAnalytics;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.repository.query.Param;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -43,60 +44,80 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
             """, nativeQuery = true)
     RecruiterAnalytics getRecruiterAnalytics(@Param("userId") UUID userId);
 
-    @Query("""
-            SELECT new com.example.job_recommendation_backend.DTO.JobResponseDto(
-                j.id,
-                j.title,
-                j.description,
-                j.requiredSkills,
-                j.location,
-                j.salary,
-                j.type,
-                j.experience,
-                j.remote,
-                j.isActive,
-                j.companyName,
-                j.createdAt,
-                j.updatedAt,
-                new com.example.job_recommendation_backend.DTO.JobResponseDto.RecruiterDto(
-                    u.name,
-                    u.email
-                )
-            )
-            FROM Job j
-            JOIN j.user u
-            """)
-    Page<JobResponseDto> findAllJobs(Pageable pageable);
+//    @Query("""
+//            SELECT new com.example.job_recommendation_backend.DTO.JobResponseDto(
+//                j.id,
+//                j.title,
+//                j.description,
+//                j.requiredSkills,
+//                j.location,
+//                j.salary,
+//                j.type,
+//                j.experience,
+//                j.remote,
+//                j.isActive,
+//                j.companyName,
+//                j.createdAt,
+//                j.updatedAt,
+//                new com.example.job_recommendation_backend.DTO.JobResponseDto.RecruiterDto(
+//                    u.name,
+//                    u.email
+//                )
+//            )
+//            FROM Job j
+//            JOIN j.user u
+//            """)
+//    Page<JobResponseDto> findAllJobs(Pageable pageable);
 
+//    @Query("""
+//                SELECT new com.example.job_recommendation_backend.DTO.JobResponseDto(
+//                    j.id,
+//                    j.title,
+//                    j.description,
+//                    j.requiredSkills,
+//                    j.location,
+//                    j.salary,
+//                    j.type,
+//                    j.experience,
+//                    j.remote,
+//                    j.isActive,
+//                    j.companyName,
+//                    j.createdAt,
+//                    j.updatedAt,
+//                    new com.example.job_recommendation_backend.DTO.RecruiterDto(
+//                        u.name,
+//                        u.email
+//                    )
+//                )
+//                FROM Job j
+//                JOIN j.user u
+//                WHERE LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
+//                   OR LOWER(j.companyName) LIKE LOWER(CONCAT('%', :query, '%'))
+//            """)
+//
+
+    @EntityGraph(attributePaths = {"user"})
+    @Query("SELECT j FROM Job j")
+    Page<Job> findAllWithUser(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"user"})
     @Query("""
-            SELECT new com.example.job_recommendation_backend.DTO.JobResponseDto(
-                j.id,
-                j.title,
-                j.description,
-                j.requiredSkills,
-                j.location,
-                j.salary,
-                j.type,
-                j.experience,
-                j.remote,
-                j.isActive,
-                j.companyName,
-                j.createdAt,
-                j.updatedAt,
-                new com.example.job_recommendation_backend.DTO.JobResponseDto.RecruiterDto(
-                    u.name,
-                    u.email
-                )
-            )
-            FROM Job j
-            JOIN j.user u
-            WHERE LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
-               OR LOWER(j.companyName) LIKE LOWER(CONCAT('%', :query, '%'))
+                SELECT j FROM Job j
+                WHERE LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
+                   OR LOWER(j.companyName) LIKE LOWER(CONCAT('%', :query, '%'))
             """)
-    Page<JobResponseDto> searchJobs(@Param("query") String query, Pageable pageable);
+    Page<Job> searchJobsWithUser(@Param("query") String query, Pageable pageable);
 
     @Modifying
     @Transactional
-    @Query("UPDATE Job j SET j.isActive = NOT j.isActive WHERE j.id = :id")
+    @Query("""
+                UPDATE Job j 
+                SET j.isActive = 
+                    CASE 
+                        WHEN j.isActive = true THEN false 
+                        ELSE true 
+                    END
+                WHERE j.id = :id
+            """)
     int toggleJobStatus(@Param("id") UUID id);
 }
