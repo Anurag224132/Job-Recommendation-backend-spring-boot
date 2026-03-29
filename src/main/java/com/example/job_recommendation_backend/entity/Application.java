@@ -37,6 +37,7 @@ public class Application {
     private String notes;
     private LocalDateTime interviewDate;
     private String interviewLink;
+    private String resumePath;
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;

@@ -1,4 +1,4 @@
-package com.example.job_recommendation_backend.service.impl;
+package com.example.job_recommendation_backend.service.Impl;
 
 import com.example.job_recommendation_backend.service.EmailService;
 import jakarta.mail.MessagingException;
@@ -10,6 +10,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 
 @Service
 @Slf4j
@@ -87,5 +89,17 @@ public class EmailServiceImpl implements EmailService {
             log.error("Error sending password reset email to {}: {}", email, e.getMessage());
             throw new RuntimeException("Failed to send password reset email", e);
         }
+    }
+
+    @Async
+    @Override
+    public void sendInterviewEmail(String email,
+                                   String name,
+                                   String jobTitle,
+                                   LocalDateTime date,
+                                   String link) {
+
+        // 🔥 Replace with JavaMailSender in real project
+        System.out.println("Sending email to: " + email);
     }
 }

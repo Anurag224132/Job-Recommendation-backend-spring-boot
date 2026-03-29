@@ -12,7 +12,7 @@ import java.util.UUID;
 @Component
 public class JwtUtil {
 
-    private static final String SECRET_KEY = "this_secret_key_is_made_for_job_recommendation_project_by_admin";
+    private static final String SECRET_KEY = "your_very_long_secure_key_at_least_32_chars_123456";
 
     public String generateToken(String email, UUID userId, String role) {
         return Jwts.builder()
@@ -20,7 +20,7 @@ public class JwtUtil {
                 .claim("id", userId)
                 .claim("role", role)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 60 * 60 * 100))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60)) // 1 hour
                 .signWith(Keys.hmacShaKeyFor(SECRET_KEY.getBytes()), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -33,8 +33,24 @@ public class JwtUtil {
                 .getBody();
     }
 
-    public long getRemainingTime(String token) {
-        Date exp = getClaims(token).getExpiration();
-        return (exp.getTime() - System.currentTimeMillis()) / 1000;
+    public UUID extractUserId(String token) {
+        return UUID.fromString(getClaims(token).get("id").toString());
+    }
+
+    public String extractRole(String token) {
+        return getClaims(token).get("role").toString();
+    }
+
+    public String extractEmail(String token) {
+        return getClaims(token).getSubject();
+    }
+
+    public boolean isTokenValid(String token) {
+        try {
+            getClaims(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
