@@ -1,6 +1,5 @@
 package com.example.job_recommendation_backend.repository;
 
-import com.example.job_recommendation_backend.DTO.JobResponseDto;
 import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.repository.projection.RecruiterAnalytics;
 import org.springframework.data.domain.Page;
