@@ -2,13 +2,17 @@ package com.example.job_recommendation_backend.DTO;
 
 import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.enums.Role;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
 @Data
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class UserResponseDto {
     private UUID id;
     private String name;

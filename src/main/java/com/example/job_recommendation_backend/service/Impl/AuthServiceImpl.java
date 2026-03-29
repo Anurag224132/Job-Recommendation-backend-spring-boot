@@ -17,6 +17,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -66,11 +68,15 @@ public class AuthServiceImpl implements AuthService {
                 .name(registerUserDto.getName())
                 .email(registerUserDto.getEmail())
                 .password(passwordEncoder.encode(registerUserDto.getPassword()))
-                .role(Role.valueOf(registerUserDto.getRole()))
+                .role(Role.valueOf(registerUserDto.getRole().toLowerCase()))
                 .build();
 
+        if (user.getLastLogin() == null) {
+            user.setLastLogin(new ArrayList<>());
+        }
+        user.getLastLogin().add(LocalDateTime.now());
         User savedUser = userRepository.save(user);
-        String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId());
+        String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getRole().name());
 
         redisTemplate.delete(key);
         log.info("User registered successfully: {}", email);
@@ -87,7 +93,13 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("Invalid credentials");
         }
 
-        String token = jwtUtil.generateToken(user.getEmail(), user.getId());
+        if (user.getLastLogin() == null) {
+            user.setLastLogin(new ArrayList<>());
+        }
+        user.getLastLogin().add(LocalDateTime.now());
+        userRepository.save(user);
+
+        String token = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole().name());
         return new LoginResponse(token, UserResponseDto.fromEntity(user));
     }
 
