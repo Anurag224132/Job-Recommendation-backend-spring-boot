@@ -15,18 +15,17 @@ import java.util.UUID;
 public interface ApplicationRepository extends JpaRepository<Application, UUID> {
 
     @Query("""
-            SELECT
-                COUNT(a) as jobsApplied,
-                COALESCE(SUM(CASE WHEN a.status = 'rejected' THEN 1 ELSE 0 END), 0) as jobsRejected,
-                (
-                    SELECT COUNT(i)
-                    FROM Interview i
-                    WHERE i.user.id = :userId
-                      AND i.status = 'completed'
-                      AND i.deletedAt IS NULL
-                ) as interviewsCompleted
-            FROM Application a
-            WHERE a.user.id = :userId
+                SELECT
+                    COUNT(a) as jobsApplied,
+                    COALESCE(SUM(CASE 
+                        WHEN a.status = com.example.job_recommendation_backend.enums.ApplicationStatus.rejected 
+                        THEN 1 ELSE 0 END), 0) as jobsRejected,
+                    COALESCE(SUM(CASE 
+                        WHEN i.status = com.example.job_recommendation_backend.enums.InterviewStatus.completed 
+                        THEN 1 ELSE 0 END), 0) as interviewsCompleted
+                FROM Application a
+                LEFT JOIN Interview i ON i.user.id = a.user.id
+                WHERE a.user.id = :userId
             """)
     StudentAnalytics getStudentAnalytics(UUID userId);
 
