@@ -43,58 +43,6 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
             """, nativeQuery = true)
     RecruiterAnalytics getRecruiterAnalytics(@Param("userId") UUID userId);
 
-//    @Query("""
-//            SELECT new com.example.job_recommendation_backend.DTO.JobResponseDto(
-//                j.id,
-//                j.title,
-//                j.description,
-//                j.requiredSkills,
-//                j.location,
-//                j.salary,
-//                j.type,
-//                j.experience,
-//                j.remote,
-//                j.isActive,
-//                j.companyName,
-//                j.createdAt,
-//                j.updatedAt,
-//                new com.example.job_recommendation_backend.DTO.JobResponseDto.RecruiterDto(
-//                    u.name,
-//                    u.email
-//                )
-//            )
-//            FROM Job j
-//            JOIN j.user u
-//            """)
-//    Page<JobResponseDto> findAllJobs(Pageable pageable);
-
-//    @Query("""
-//                SELECT new com.example.job_recommendation_backend.DTO.JobResponseDto(
-//                    j.id,
-//                    j.title,
-//                    j.description,
-//                    j.requiredSkills,
-//                    j.location,
-//                    j.salary,
-//                    j.type,
-//                    j.experience,
-//                    j.remote,
-//                    j.isActive,
-//                    j.companyName,
-//                    j.createdAt,
-//                    j.updatedAt,
-//                    new com.example.job_recommendation_backend.DTO.RecruiterDto(
-//                        u.name,
-//                        u.email
-//                    )
-//                )
-//                FROM Job j
-//                JOIN j.user u
-//                WHERE LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
-//                   OR LOWER(j.companyName) LIKE LOWER(CONCAT('%', :query, '%'))
-//            """)
-//
-
     @EntityGraph(attributePaths = {"user"})
     @Query("SELECT j FROM Job j")
     Page<Job> findAllWithUser(Pageable pageable);
