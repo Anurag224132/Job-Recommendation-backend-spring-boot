@@ -42,9 +42,8 @@ public class AdminServiceImpl implements AdminService {
     private InterviewRepository interviewRepository;
 
     public Page<UserResponseDto> getAllUsers(Pageable pageable) {
-
-        Page<UserResponseDto> users = userRepository.findAllUsers(pageable);
-        return users;
+        return userRepository.findAll(pageable)
+                .map(UserResponseDto::fromEntity);
     }
 
     public String deleteUser(UUID id) {

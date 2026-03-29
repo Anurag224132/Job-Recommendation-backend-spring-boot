@@ -28,34 +28,53 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws IOException, ServletException {
+            HttpServletResponse response,
+            FilterChain chain) throws IOException, ServletException {
 
         String header = request.getHeader("Authorization");
 
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
+        try {
+            if (header != null && header.startsWith("Bearer ")) {
+                String token = header.substring(7);
 
-            if (redisTemplate.hasKey("BLACKLIST:TOKEN:" + token)) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token logged out");
-                return;
+                // Safe Redis Check
+                try {
+                    if (Boolean.TRUE.equals(redisTemplate.hasKey("BLACKLIST:TOKEN:" + token))) {
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token logged out");
+                        return;
+                    }
+                } catch (Exception e) {
+                    System.err.println("⚠️ Redis is down or not configured. Skipping blacklist check.");
+                }
+
+                Claims claims = jwtUtil.getClaims(token);
+                String email = claims.getSubject();
+                String role = claims.get("role", String.class);
+
+                // Diagnostic Log
+                System.out.println("🔍 Auth Filter: User=" + email + ", Role=" + role);
+
+                SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
+
+                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                        email, null, Collections.singletonList(authority));
+
+                SecurityContextHolder.getContext().setAuthentication(auth);
             }
-
-            Claims claims = jwtUtil.getClaims(token);
-            String email = claims.getSubject();
-            String role = claims.get("role", String.class);
-
-            org.springframework.security.core.authority.SimpleGrantedAuthority authority =
-                    new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
-
-            UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(email, null, java.util.List.of(authority));
-
-            SecurityContextHolder.getContext().setAuthentication(auth);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("JWT token has expired. Please login again.");
+            return;
+        } catch (io.jsonwebtoken.JwtException e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Invalid JWT token: " + e.getMessage());
+            return;
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().write("Security Filter Error: " + e.getMessage());
+            return;
         }
 
         chain.doFilter(request, response);
     }
 }
-
-
