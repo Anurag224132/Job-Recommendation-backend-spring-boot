@@ -28,8 +28,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query(value = """
                 SELECT
                     COUNT(*) as totalUsers,
-                    SUM(CASE WHEN role = 'recruiter' THEN 1 ELSE 0 END) as totalRecruiters,
-                    SUM(CASE WHEN role = 'student' THEN 1 ELSE 0 END) as totalStudents,
+                    COALESCE(SUM(CASE WHEN role = 'recruiter' THEN 1 ELSE 0 END),0) as totalRecruiters,
+                    COALESCE(SUM(CASE WHEN role = 'student' THEN 1 ELSE 0 END), 0) as totalStudents,
                     (SELECT COUNT(*) FROM jobs WHERE deleted_at IS NULL) as totalJobs
                 FROM users
                 WHERE deleted_at IS NULL
@@ -59,9 +59,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query(value = """
                 SELECT
                     COUNT(*) as totalUsers,
-                    SUM(CASE WHEN role = 'student' THEN 1 ELSE 0 END) as studentCount,
-                    SUM(CASE WHEN role = 'recruiter' THEN 1 ELSE 0 END) as recruiterCount,
-                    SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) as adminCount,
+                    COALESCE(SUM(CASE WHEN role = 'student' THEN 1 ELSE 0 END),0) as studentCount,
+                    COALESCE(SUM(CASE WHEN role = 'recruiter' THEN 1 ELSE 0 END),0) as recruiterCount,
+                    COALESCE(SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END),0) as adminCount,
                     (SELECT COUNT(*) FROM jobs WHERE deleted_at IS NULL) as totalJobs,
                     (SELECT COUNT(*) FROM applications WHERE deleted_at IS NULL) as totalApplications
                 FROM users

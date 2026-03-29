@@ -17,11 +17,6 @@ import java.util.UUID;
 @Repository
 public interface JobRepository extends JpaRepository<Job, UUID> {
 
-    @Modifying(clearAutomatically = true)
-    @Transactional
-    @Query("UPDATE Job j SET j.user = null WHERE j.user.id = :userId")
-    void detachJobsFromUser(@Param("userId") UUID userId);
-
     @Query(value = """
                 SELECT
                     COALESCE((SELECT COUNT(*) FROM jobs WHERE user_id = :userId AND deleted_at IS NULL), 0) AS jobsPosted,
@@ -44,27 +39,27 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
     RecruiterAnalytics getRecruiterAnalytics(@Param("userId") UUID userId);
 
     @EntityGraph(attributePaths = {"user"})
-    @Query("SELECT j FROM Job j")
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL")
     Page<Job> findAllWithUser(Pageable pageable);
 
     @EntityGraph(attributePaths = {"user"})
     @Query("""
                 SELECT j FROM Job j
-                WHERE LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
-                   OR LOWER(j.companyName) LIKE LOWER(CONCAT('%', :query, '%'))
+                WHERE j.deletedAt IS NULL
+                  AND (
+                       LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(j.companyName) LIKE LOWER(CONCAT('%', :query, '%'))
+                  )
             """)
     Page<Job> searchJobsWithUser(@Param("query") String query, Pageable pageable);
 
     @Modifying
     @Transactional
-    @Query("""
-                UPDATE Job j 
-                SET j.isActive = 
-                    CASE 
-                        WHEN j.isActive = true THEN false 
-                        ELSE true 
-                    END
-                WHERE j.id = :id
-            """)
+    @Query("UPDATE Job j SET j.isActive = NOT j.isActive WHERE j.id = :id")
     int toggleJobStatus(@Param("id") UUID id);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Job j SET j.deletedAt = CURRENT_TIMESTAMP WHERE j.user.id = :userId")
+    void detachJobsFromUser(@Param("userId") UUID userId);
 }
