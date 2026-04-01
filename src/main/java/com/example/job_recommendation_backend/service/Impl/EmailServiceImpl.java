@@ -1,4 +1,4 @@
-package com.example.job_recommendation_backend.service.impl;
+package com.example.job_recommendation_backend.service.Impl;
 
 import com.example.job_recommendation_backend.service.EmailService;
 import jakarta.mail.MessagingException;
@@ -10,6 +10,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 
 @Service
 @Slf4j
@@ -86,6 +88,45 @@ public class EmailServiceImpl implements EmailService {
         } catch (MessagingException e) {
             log.error("Error sending password reset email to {}: {}", email, e.getMessage());
             throw new RuntimeException("Failed to send password reset email", e);
+        }
+    }
+
+    @Async
+    @Override
+    public void sendInterviewEmail(String email, String name, String jobTitle, LocalDateTime date, String link) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            helper.setTo(email);
+            helper.setSubject("Interview Scheduled - " + jobTitle);
+
+            String htmlContent = String.format(
+                    "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">" +
+                            "<h2 style=\"color: #16a34a;\">Interview Scheduled 🎉</h2>" +
+                            "<p>Hello %s,</p>" +
+                            "<p>Your interview for the position <strong>%s</strong> has been scheduled.</p>" +
+                            "<p><strong>Date & Time:</strong> %s</p>" +
+                            "<p><strong>Meeting Link:</strong></p>" +
+                            "<p><a href=\"%s\">Join Interview</a></p>" +
+                            "<p>Please be available on time.</p>" +
+                            "<p>Best of luck!<br>Your App Team</p>" +
+                            "</div>",
+                    name,
+                    jobTitle,
+                    date,
+                    link
+            );
+
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+
+            log.info("Interview email sent to: {}", email);
+
+        } catch (Exception e) {
+            log.error("Failed to send interview email to {}: {}", email, e.getMessage());
         }
     }
 }

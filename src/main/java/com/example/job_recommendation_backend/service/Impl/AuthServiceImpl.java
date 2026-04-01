@@ -1,4 +1,4 @@
-package com.example.job_recommendation_backend.service.impl;
+package com.example.job_recommendation_backend.service.Impl;
 
 import com.example.job_recommendation_backend.DTO.LoginRequest;
 import com.example.job_recommendation_backend.DTO.LoginResponse;
