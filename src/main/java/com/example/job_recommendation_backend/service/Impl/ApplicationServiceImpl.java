@@ -40,20 +40,25 @@ import java.util.stream.Collectors;
 @Service
 public class ApplicationServiceImpl implements ApplicationService {
 
-    @Autowired
-    private ApplicationRepository applicationRepository;
+    private final ApplicationRepository applicationRepository;
+    private final JobRepository jobRepository;
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+    private final GoogleCalendarService googleCalendarService;
 
-    @Autowired
-    private JobRepository jobRepository;
+    public ApplicationServiceImpl(
+            ApplicationRepository applicationRepository,
+            JobRepository jobRepository,
+            UserRepository userRepository,
+            EmailService emailService,
+            GoogleCalendarService googleCalendarService) {
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private EmailService emailService;
-
-    @Autowired
-    private GoogleCalendarService googleCalendarService;
+        this.applicationRepository = applicationRepository;
+        this.jobRepository = jobRepository;
+        this.userRepository = userRepository;
+        this.emailService = emailService;
+        this.googleCalendarService = googleCalendarService;
+    }
 
 
     public long calculateFitScore(CalculateFitScoreDto req) {
@@ -81,8 +86,11 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     public ApplicationResponseDto createApplication(CreateApplicationRequestDto request){
 
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        var context = UserContext.get();
+        UUID userId = context.getUserId();
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         if(user.getResumePath() == null || user.getResumePath().isBlank()){
             throw new RuntimeException("Please upload your resume first");
@@ -119,7 +127,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         return mapToResponse(application,null);
     }
 
-    public List<ApplicationResponseDto> allApplications(UUID userId, Role role, Pageable pageable){
+    public Page<ApplicationResponseDto> allApplications(UUID userId, Role role, Pageable pageable){
         if(role == Role.recruiter)
             return getAllApplicationsForRecruiter(userId, pageable);
         if(role == Role.student)
@@ -174,19 +182,15 @@ public class ApplicationServiceImpl implements ApplicationService {
         return mapToResponse(application, Role.recruiter);
     }
 
-    private List<ApplicationResponseDto> getAllApplicationsForRecruiter(UUID userId,Pageable pageable){
+    private Page<ApplicationResponseDto> getAllApplicationsForRecruiter(UUID userId,Pageable pageable){
         Page<Application> applications=applicationRepository.findApplicationsForRecruiter(userId, pageable);
-        List<ApplicationResponseDto> response= applications.stream()
-                .map(app -> mapToResponse(app, Role.recruiter))
-                .toList();
-        return response;
+        return applications.map(app -> mapToResponse(app, Role.recruiter));
     }
 
-    private List<ApplicationResponseDto> getAllApplicationsForStudent(UUID userId, Pageable pageable){
+    private Page<ApplicationResponseDto> getAllApplicationsForStudent(UUID userId, Pageable pageable){
         return applicationRepository
                 .findApplicationsForStudent(userId, pageable)
-                .map(app -> mapToResponse(app, Role.student))
-                .getContent();
+                .map(app -> mapToResponse(app, Role.student));
     }
 
     private ApplicationResponseDto mapToResponse(Application application, Role role) {
@@ -300,19 +304,19 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
 
-    public ApplicationResponseDto scheduleInterview(UUID appId, LocalDateTime interviewDate, String accessToken, UUID currentUserId) {
+    public ApplicationResponseDto scheduleInterview(UUID appId, LocalDateTime interviewDate) {
+
+        var context = UserContext.get();
+        UUID currentUserId = context.getUserId();
 
         Application app = applicationRepository.findById(appId)
-                .orElseThrow(() -> new RuntimeException("Application not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found"));
 
-        // 🔐 Authorization check
         if (!app.getJob().getUser().getId().equals(currentUserId)) {
-            throw new RuntimeException("Not authorized");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized");
         }
 
-        // 🔥 Generate Meet link
-        String meetLink = googleCalendarService
-                .createMeetLink(accessToken, interviewDate);
+        String meetLink = googleCalendarService.createMeetLink(interviewDate, app.getUser().getEmail());
 
         app.setInterviewDate(interviewDate);
         app.setInterviewLink(meetLink);
@@ -320,18 +324,13 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         applicationRepository.save(app);
 
-        // 📧 Send email
-        try {
-            emailService.sendInterviewEmail(
-                    app.getUser().getEmail(),
-                    app.getUser().getName(),
-                    app.getJob().getTitle(),
-                    interviewDate,
-                    meetLink
-            );
-        } catch (Exception e) {
-            System.out.println("Email failed but interview scheduled");
-        }
+        emailService.sendInterviewEmail(
+                app.getUser().getEmail(),
+                app.getUser().getName(),
+                app.getJob().getTitle(),
+                interviewDate,
+                meetLink
+        );
 
         return mapToResponse(app, Role.recruiter);
     }

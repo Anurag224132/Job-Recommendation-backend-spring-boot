@@ -4,23 +4,28 @@ import com.example.job_recommendation_backend.DTO.*;
 import com.example.job_recommendation_backend.enums.Role;
 import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.ApplicationService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/applications")
 public class ApplicationController {
 
-    @Autowired
-    private ApplicationService applicationService;
+    private final ApplicationService applicationService;
+
+    public ApplicationController(ApplicationService applicationService) {
+        this.applicationService = applicationService;
+    }
 
 
     @PostMapping("/calculate-fit")
@@ -30,17 +35,23 @@ public class ApplicationController {
 
 
     @PostMapping
-    public ResponseEntity<ApplicationResponseDto> createApplication(@RequestBody CreateApplicationRequestDto request) {
+    public ResponseEntity<ApplicationResponseDto> createApplication(@Valid @RequestBody CreateApplicationRequestDto request) {
         return ResponseEntity.ok(applicationService.createApplication(request));
     }
 
 
-    @GetMapping("/recruiter/{recruiterId}")
-    public ResponseEntity<List<ApplicationResponseDto>> getRecruiterApplications(
-            @PathVariable UUID recruiterId, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
+    @PreAuthorize("hasRole('RECRUITER')")
+    @GetMapping("/recruiter")
+    public ResponseEntity<Page<ApplicationResponseDto>> getRecruiterApplications(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
-        return ResponseEntity.ok(applicationService.allApplications(recruiterId, Role.recruiter, pageable));
+        Pageable pageable = getPageable(page, size);
+        var context = UserContext.get();
+        UUID recruiterId = context.getUserId();
+        Role role = context.getRole();
+
+        return ResponseEntity.ok(applicationService.allApplications(recruiterId, role, pageable));
     }
 
 
@@ -50,38 +61,36 @@ public class ApplicationController {
     }
 
 
-    @GetMapping("/user/{id}")
-    public ResponseEntity<List<ApplicationResponseDto>> getUserApplications(
-            @PathVariable UUID id, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    @PreAuthorize("hasRole('STUDENT')")
+    @GetMapping
+    public ResponseEntity<Page<ApplicationResponseDto>> getUserApplications(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(applicationService.allApplications(id, Role.student, pageable));
+        Pageable pageable = getPageable(page, size);
+        UUID userId = UserContext.get().getUserId();
+
+        return ResponseEntity.ok(applicationService.allApplications(userId, Role.student, pageable));
     }
 
 
+    @PreAuthorize("hasAnyRole('RECRUITER','STUDENT')")
     @GetMapping("/{id}")
     public ResponseEntity<ApplicationResponseDto> getApplication(@PathVariable UUID id) {
-
         return ResponseEntity.ok(applicationService.checkApplication(null, id));
     }
 
 
     @PutMapping("/{appId}/schedule-interview")
-    public ResponseEntity<ApplicationResponseDto> scheduleInterview(@PathVariable UUID appId, @RequestBody ScheduleInterviewRequestDto request,
-                                                                    @RequestHeader("Authorization") String authHeader) {
-        String accessToken = authHeader.replace("Bearer ", "");
-        UUID currentUserId = UserContext.get().getUserId();
-        return ResponseEntity.ok(
-                applicationService.scheduleInterview(
-                        appId,
-                        request.getInterviewDate(),
-                        accessToken,
-                        currentUserId
-                )
-        );
+    public ApplicationResponseDto scheduleInterview(
+            @PathVariable UUID appId,
+            @Valid @RequestBody ScheduleInterviewRequestDto request) {
+
+        return applicationService.scheduleInterview(appId, request.getInterviewDate());
     }
 
 
+    @PreAuthorize("hasAnyRole('RECRUITER','STUDENT')")
     @GetMapping("/{applicationId}/download-resume")
     public ResponseEntity<Resource> downloadResume(@PathVariable UUID applicationId) {
         Resource resource = applicationService.downloadResume(applicationId);
@@ -100,8 +109,14 @@ public class ApplicationController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteApplication(@PathVariable UUID id) {
-        UUID userId = UserContext.get().getUserId();
-        Role role = UserContext.get().getRole();
+        var context = UserContext.get();
+        UUID userId = context.getUserId();
+        Role role = context.getRole();
         return ResponseEntity.ok(applicationService.deleteApplication(id, role, userId));
+    }
+
+    private Pageable getPageable(int page, int size) {
+        size = Math.min(size, 50);
+        return PageRequest.of(page, size, Sort.by("createdAt").descending());
     }
 }
