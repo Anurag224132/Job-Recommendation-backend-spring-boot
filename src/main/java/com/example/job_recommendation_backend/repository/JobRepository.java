@@ -10,12 +10,15 @@ import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface JobRepository extends JpaRepository<Job, UUID> {
+public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificationExecutor<Job> {
 
     @Query(value = """
                 SELECT
@@ -55,11 +58,19 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
 
     @Modifying
     @Transactional
-    @Query("UPDATE Job j SET j.isActive = NOT j.isActive WHERE j.id = :id")
+    @Query("UPDATE Job j SET j.isActive = CASE  WHEN j.isActive = true THEN false ELSE true END WHERE j.id = :id ")
     int toggleJobStatus(@Param("id") UUID id);
 
     @Modifying
     @Transactional
     @Query("UPDATE Job j SET j.deletedAt = CURRENT_TIMESTAMP WHERE j.user.id = :userId")
     void softDeleteJobsByUser(@Param("userId") UUID userId);
+
+    List<Job> findByIsActiveTrueOrderByCreatedAtDesc();
+
+    Page<Job> findByIsActiveTrueAndDeletedAtIsNull(Pageable pageable);
+
+    @Query("select j from Job j where j.user.id = :recruiterId")
+    Page<Job> findByRecruiterId(UUID recruiterId, Pageable pageable);
+
 }

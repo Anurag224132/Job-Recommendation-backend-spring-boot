@@ -1,6 +1,7 @@
 package com.example.job_recommendation_backend.repository;
 
 import com.example.job_recommendation_backend.DTO.ApplicationResponseDto;
+import com.example.job_recommendation_backend.DTO.JobAnalyticsDto;
 import com.example.job_recommendation_backend.entity.Application;
 import com.example.job_recommendation_backend.repository.projection.StudentAnalytics;
 import org.springframework.data.domain.Page;
@@ -13,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -74,4 +76,33 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
     Optional<Application> findByUser_IdAndJob_IdAndDeletedAtIsNull(UUID userId, UUID jobId);
 
     boolean existsByUserIdAndJobIdAndDeletedAtIsNull(UUID userId, UUID jobId);
+
+    @Query("SELECT a FROM Application a JOIN FETCH a.job j JOIN FETCH a.user u WHERE u.id = :userId")
+    List<Application> findByUserIdWithJobAndUser(UUID userId);
+
+    @Query("""
+                SELECT new com.example.job_recommendation_backend.DTO.JobAnalyticsDto(
+                    j.id, j.title, COUNT(a)
+                )
+                FROM Job j LEFT JOIN Application a ON a.job.id = j.id
+                WHERE j.user.id = :userId
+                GROUP BY j.id, j.title
+            """)
+    List<JobAnalyticsDto> getJobAnalytics(UUID userId);
+
+    @Query("""
+                SELECT a FROM Application a
+                JOIN FETCH a.user u
+                JOIN FETCH a.job j
+                WHERE j.id = :jobId
+            """)
+    List<Application> findApplicantsByJobId(UUID jobId);
+
+    @Query("""
+                SELECT a FROM Application a
+                JOIN FETCH a.user u
+                JOIN FETCH a.job j
+                WHERE j.user.id = :recruiterId
+            """)
+    List<Application> findAllByRecruiter(UUID recruiterId);
 }
