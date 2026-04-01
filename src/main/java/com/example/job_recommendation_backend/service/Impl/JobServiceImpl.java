@@ -108,11 +108,9 @@ public class JobServiceImpl implements JobService {
         Specification<Job> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Only active jobs
             predicates.add(cb.isTrue(root.get("isActive")));
             predicates.add(cb.isNull(root.get("deletedAt")));
 
-            // Filter by keyword (q) in title, description, company name
             if (q != null && !q.isEmpty()) {
                 String searchPattern = "%" + q.toLowerCase() + "%";
                 predicates.add(cb.or(
@@ -122,27 +120,22 @@ public class JobServiceImpl implements JobService {
                 ));
             }
 
-            // Filter by location
             if (location != null && !location.isEmpty()) {
                 predicates.add(cb.like(cb.lower(root.get("location")), "%" + location.toLowerCase() + "%"));
             }
 
-            // Filter by remote
             if (remote != null) {
                 predicates.add(cb.equal(root.get("remote"), remote));
             }
 
-            // Filter by job type
             if (type != null && !type.isEmpty()) {
                 predicates.add(cb.equal(root.get("type"), type));
             }
 
-            // Filter by experience level
             if (experience != null && !experience.isEmpty()) {
                 predicates.add(cb.equal(root.get("experience"), experience));
             }
 
-            // Filter by skills
             if (skills != null && !skills.isEmpty()) {
                 List<String> skillList = Arrays.asList(skills.split(","));
                 for (String skill : skillList) {
@@ -184,10 +177,10 @@ public class JobServiceImpl implements JobService {
 
         return ApplicationResponseDto.builder()
                 .id(app.getId())
-                .studentName(app.getUser().getName())   // user -> student
+                .studentName(app.getUser().getName())
                 .jobTitle(app.getJob().getTitle())
                 .companyName(app.getJob().getCompanyName())
-                .status(app.getStatus()) // enum directly
+                .status(app.getStatus())
                 .fitScore(app.getFitScore() != null ? app.getFitScore().toString() : null)
                 .createdAt(app.getCreatedAt())
                 .build();

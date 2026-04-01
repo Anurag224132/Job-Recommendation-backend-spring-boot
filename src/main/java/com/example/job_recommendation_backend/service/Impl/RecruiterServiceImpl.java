@@ -36,9 +36,6 @@ public class RecruiterServiceImpl implements RecruiterService {
 
     private final String uploadDir = System.getProperty("user.dir") + "/uploads/resumes";
 
-    // =========================
-    // ✅ ANALYTICS (NO N+1)
-    // =========================
     @Override
     public List<JobAnalyticsDto> getRecruiterAnalytics(UUID userId) {
         return applicationRepository.getJobAnalytics(userId);
@@ -50,9 +47,6 @@ public class RecruiterServiceImpl implements RecruiterService {
         return Map.of("applicationsPerJob", data);
     }
 
-    // =========================
-    // ✅ SKILL GAP
-    // =========================
     @Override
     public SkillGapDto skillGapAnalysis(UUID jobId, UUID userId) {
 
@@ -81,9 +75,6 @@ public class RecruiterServiceImpl implements RecruiterService {
         return new SkillGapDto(missing);
     }
 
-    // =========================
-    // ✅ JOB APPLICANTS
-    // =========================
     @Override
     public List<ApplicantDto> getJobApplicants(UUID jobId, UUID userId) {
 
@@ -107,9 +98,6 @@ public class RecruiterServiceImpl implements RecruiterService {
         ).toList();
     }
 
-    // =========================
-    // ✅ UPDATE JOB
-    // =========================
     @Override
     public Job updateJob(UUID jobId, UUID userId, Map<String, Object> body) {
 
@@ -132,9 +120,6 @@ public class RecruiterServiceImpl implements RecruiterService {
         return jobRepository.save(job);
     }
 
-    // =========================
-    // ✅ TOGGLE JOB
-    // =========================
     @Override
     public Map<String, Object> toggleJobActive(UUID jobId, UUID userId) {
 
@@ -151,9 +136,6 @@ public class RecruiterServiceImpl implements RecruiterService {
         return Map.of("isActive", job.getIsActive());
     }
 
-    // =========================
-    // ✅ DOWNLOAD RESUME
-    // =========================
     @Override
     public ResponseEntity<InputStreamResource> downloadResume(UUID appId) {
 
@@ -182,9 +164,6 @@ public class RecruiterServiceImpl implements RecruiterService {
         }
     }
 
-    // =========================
-    // ✅ DASHBOARD (NO N+1)
-    // =========================
     @Override
     public List<RecruiterDashboardDto> getRecruiterDashboard(UUID recruiterId, UUID userId) {
 

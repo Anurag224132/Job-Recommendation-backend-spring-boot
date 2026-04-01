@@ -39,29 +39,21 @@ public class ResumeServiceImpl implements ResumeService {
 
     private final String uploadDir = System.getProperty("user.dir") + "/uploads/resumes";
 
-    // =========================
-    // ✅ Create Upload Directory
-    // =========================
     @PostConstruct
     public void init() throws IOException {
         Files.createDirectories(Paths.get(uploadDir));
     }
 
-    // =========================
-    // ✅ Upload + Parse Resume
-    // =========================
     @Override
     public Map<String, Object> uploadResume(MultipartFile file, UUID userId) {
 
         try {
             validateFile(file);
 
-            // sanitize filename
             String originalName = file.getOriginalFilename();
             String sanitized = originalName.replaceAll("[^a-zA-Z0-9_.-]", "_");
             String filename = System.currentTimeMillis() + "-" + sanitized;
 
-            // secure path
             Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
             Path filePath = uploadPath.resolve(filename).normalize();
 
@@ -69,10 +61,8 @@ public class ResumeServiceImpl implements ResumeService {
                 throw new RuntimeException("Invalid file path");
             }
 
-            // save file
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            // prepare multipart request
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("resume", new FileSystemResource(filePath.toFile()));
 
@@ -82,7 +72,6 @@ public class ResumeServiceImpl implements ResumeService {
             HttpEntity<MultiValueMap<String, Object>> request =
                     new HttpEntity<>(body, headers);
 
-            // call ML API
             ResponseEntity<Map> response = restTemplate.postForEntity(
                     mlApiUrl + "/parse_resume",
                     request,
@@ -91,13 +80,11 @@ public class ResumeServiceImpl implements ResumeService {
 
             Map<String, Object> mlData = response.getBody();
 
-            // update user
             if (userId != null && mlData != null && mlData.get("skills") != null) {
 
                 User user = userRepository.findById(userId)
                         .orElseThrow(() -> new RuntimeException("User not found"));
 
-                // delete old resume
                 if (user.getResumePath() != null) {
                     Path oldPath = uploadPath.resolve(user.getResumePath());
                     Files.deleteIfExists(oldPath);
@@ -105,7 +92,6 @@ public class ResumeServiceImpl implements ResumeService {
 
                 user.setResumePath(filename);
 
-                // safe casting + normalization
                 Object skillsObj = mlData.get("skills");
                 if (skillsObj instanceof List<?>) {
                     List<String> skills = ((List<?>) skillsObj).stream()
@@ -126,9 +112,6 @@ public class ResumeServiceImpl implements ResumeService {
         }
     }
 
-    // =========================
-    // ✅ Download Resume
-    // =========================
     @Override
     public ResponseEntity<InputStreamResource> downloadResume(String filename) {
 
@@ -154,9 +137,6 @@ public class ResumeServiceImpl implements ResumeService {
         }
     }
 
-    // =========================
-    // ✅ Recommend Jobs
-    // =========================
     @Override
     public Map<String, Object> recommendJobs(UUID userId) {
 
@@ -201,9 +181,6 @@ public class ResumeServiceImpl implements ResumeService {
         }
     }
 
-    // =========================
-    // ✅ File Validation (Multer Equivalent)
-    // =========================
     private void validateFile(MultipartFile file) {
 
         if (file == null || file.isEmpty()) {
@@ -227,9 +204,6 @@ public class ResumeServiceImpl implements ResumeService {
         }
     }
 
-    // =========================
-    // ✅ Error Handler
-    // =========================
     private RuntimeException handleError(Exception err, String context) {
 
         System.err.println("❌ " + context + " error: " + err.getMessage());
