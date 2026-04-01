@@ -3,7 +3,6 @@ package com.example.job_recommendation_backend.controller;
 import com.example.job_recommendation_backend.DTO.CreateJobRequestDto;
 import com.example.job_recommendation_backend.DTO.JobResponseDto;
 import com.example.job_recommendation_backend.entity.Job;
-import com.example.job_recommendation_backend.enums.Role;
 import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.JobService;
 import lombok.RequiredArgsConstructor;
