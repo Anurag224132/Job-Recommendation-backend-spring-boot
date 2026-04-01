@@ -11,31 +11,26 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/resumes")   // ✅ same as Node
+@RequestMapping("/api/resumes")
 public class ResumeController {
 
     @Autowired
     private ResumeService resumeService;
 
-    // ✅ POST /api/resumes (upload + parse)
+
     @PostMapping
-    public ResponseEntity<?> uploadResume(
-            @RequestParam("resume") MultipartFile file,   // same field name
-            @RequestAttribute("userId") UUID userId       // from auth middleware equivalent
-    ) {
+    public ResponseEntity<?> uploadResume(@RequestParam("resume") MultipartFile file, @RequestAttribute("userId") UUID userId) {
         Map<String, Object> response = resumeService.uploadResume(file, userId);
         return ResponseEntity.ok(response);
     }
 
-    // ✅ GET /api/resumes/download/:filename
+
     @GetMapping("/download/{filename}")
-    public ResponseEntity<InputStreamResource> downloadResume(
-            @PathVariable String filename
-    ) {
+    public ResponseEntity<InputStreamResource> downloadResume(@PathVariable String filename) {
         return resumeService.downloadResume(filename);
     }
 
-    // ✅ POST /api/resumes/recommend-jobs
+
     @PostMapping("/recommend-jobs")
     public ResponseEntity<?> recommendJobs(@RequestBody Map<String, String> body) {
 

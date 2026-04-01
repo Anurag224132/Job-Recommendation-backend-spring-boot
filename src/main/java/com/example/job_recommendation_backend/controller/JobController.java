@@ -29,8 +29,7 @@ public class JobController {
             @RequestParam(required = false) String skills,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        
-        // Sort by createdAt descending by default (matching Node.js postedDate: -1)
+
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         
         return ResponseEntity.ok(jobService.searchJobs(q, location, remote, type, experience, skills, pageable));
