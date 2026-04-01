@@ -20,15 +20,17 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
 
     @Query("""
                 SELECT
-                    COUNT(a) as jobsApplied,
-                    COALESCE(SUM(CASE 
+                    COUNT(DISTINCT a.id) as jobsApplied,
+                    COALESCE(SUM(CASE
                         WHEN a.status = com.example.job_recommendation_backend.enums.ApplicationStatus.rejected 
                         THEN 1 ELSE 0 END), 0) as jobsRejected,
-                    COALESCE(SUM(CASE 
-                        WHEN i.status = com.example.job_recommendation_backend.enums.InterviewStatus.completed 
-                        THEN 1 ELSE 0 END), 0) as interviewsCompleted
+                    (
+                        SELECT COUNT(i.id)
+                        FROM Interview i
+                        WHERE i.user.id = :userId
+                        AND i.status = com.example.job_recommendation_backend.enums.InterviewStatus.completed
+                    ) as interviewsCompleted
                 FROM Application a
-                LEFT JOIN Interview i ON i.user.id = a.user.id
                 WHERE a.user.id = :userId
             """)
     StudentAnalytics getStudentAnalytics(UUID userId);
@@ -46,17 +48,18 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
             FROM Application a
             JOIN a.user u
             JOIN a.job j
+            WHERE a.deletedAt IS NULL
             """)
     Page<ApplicationResponseDto> findAllApplications(Pageable pageable);
 
     @EntityGraph(attributePaths = {"user", "job"})
     @Query("SELECT ap FROM Application ap JOIN ap.job j WHERE j.user.id = :userId")
-    Page<Application> findApplicationsForRecruiter(@Param("userId") UUID userId, Pageable pageable);
+    Page<Application> findActiveApplicationsForRecruiter(@Param("userId") UUID userId, Pageable pageable);
 
 
     @EntityGraph(attributePaths = {"user", "job"})
     @Query("select ap from Application ap join ap.user u where u.id = :userId")
-    Page<Application> findApplicationsForStudent(@Param("userId") UUID userId, Pageable pageable);
+    Page<Application> findActiveApplicationsForStudent(@Param("userId") UUID userId, Pageable pageable);
 
     @Modifying
     @Query("""
@@ -64,10 +67,11 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
                 SET ap.deletedAt = CURRENT_TIMESTAMP
                 WHERE ap.id = :applicationId
                 AND ap.job.user.id = :userId
+                AND ap.deletedAt IS NULL
             """)
     int softDeleteByRecruiter(@Param("applicationId") UUID applicationId, @Param("userId") UUID userId);
 
-    Optional<Application> findByUser_IdAndJob_Id(UUID userId, UUID jobId);
+    Optional<Application> findByUser_IdAndJob_IdAndDeletedAtIsNull(UUID userId, UUID jobId);
 
     boolean existsByUserIdAndJobIdAndDeletedAtIsNull(UUID userId, UUID jobId);
 }

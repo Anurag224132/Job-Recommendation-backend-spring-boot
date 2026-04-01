@@ -142,7 +142,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         }
 
         return applicationRepository
-                .findByUser_IdAndJob_Id(userId, jobId)
+                .findByUser_IdAndJob_IdAndDeletedAtIsNull(userId, jobId)
                 .map(app -> mapToResponse(app, null))
                 .orElse(null);
     }
@@ -160,6 +160,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     public ApplicationResponseDto updateApplicationStatus(UUID applicationId, UpdateStatusRequestDto request){
 
+        // Todo: have to No ownership validation who can update any application
         ApplicationStatus status = request.getStatus();
         String notes = request.getNotes();
 
@@ -183,13 +184,13 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     private Page<ApplicationResponseDto> getAllApplicationsForRecruiter(UUID userId,Pageable pageable){
-        Page<Application> applications=applicationRepository.findApplicationsForRecruiter(userId, pageable);
+        Page<Application> applications=applicationRepository.findActiveApplicationsForRecruiter(userId, pageable);
         return applications.map(app -> mapToResponse(app, Role.recruiter));
     }
 
     private Page<ApplicationResponseDto> getAllApplicationsForStudent(UUID userId, Pageable pageable){
         return applicationRepository
-                .findApplicationsForStudent(userId, pageable)
+                .findActiveApplicationsForStudent(userId, pageable)
                 .map(app -> mapToResponse(app, Role.student));
     }
 
@@ -306,8 +307,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     public ApplicationResponseDto scheduleInterview(UUID appId, LocalDateTime interviewDate) {
 
-        var context = UserContext.get();
-        UUID currentUserId = context.getUserId();
+        UUID currentUserId = UserContext.get().getUserId();
 
         Application app = applicationRepository.findById(appId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found"));
@@ -316,7 +316,12 @@ public class ApplicationServiceImpl implements ApplicationService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized");
         }
 
-        String meetLink = googleCalendarService.createMeetLink(interviewDate, app.getUser().getEmail());
+        String meetLink;
+        try {
+            meetLink = googleCalendarService.createMeetLink(interviewDate, app.getUser().getEmail());
+        } catch (Exception e) {
+            meetLink = null;
+        }
 
         app.setInterviewDate(interviewDate);
         app.setInterviewLink(meetLink);
