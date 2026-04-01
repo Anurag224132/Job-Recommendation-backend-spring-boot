@@ -16,8 +16,6 @@ public interface RecruiterService {
     // =========================
     Map<String, List<JobAnalyticsDto>> getAnalytics(UUID userId);
 
-    List<JobAnalyticsDto> getRecruiterAnalytics(UUID userId);
-
     // =========================
     // ✅ Skill Gap Analysis
     // =========================
@@ -41,10 +39,10 @@ public interface RecruiterService {
     // =========================
     // ✅ Download Resume
     // =========================
-    ResponseEntity<InputStreamResource> downloadResume(UUID appId);
+    ResponseEntity<InputStreamResource> downloadResume(UUID appId,UUID userId);
 
     // =========================
     // ✅ Recruiter Dashboard
     // =========================
-    List<RecruiterDashboardDto> getRecruiterDashboard(UUID recruiterId, UUID userId);
+    List<RecruiterDashboardDto> getRecruiterDashboard( UUID userId);
 }

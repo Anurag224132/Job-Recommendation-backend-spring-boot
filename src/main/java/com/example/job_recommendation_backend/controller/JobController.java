@@ -5,6 +5,7 @@ import com.example.job_recommendation_backend.DTO.JobResponseDto;
 import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.JobService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -35,35 +36,45 @@ public class JobController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = getPageable(page, size);
         
         return ResponseEntity.ok(jobService.searchJobs(q, location, remote, type, experience, skills, pageable));
     }
 
+    // Todo : do not return job directly make dto
     @PreAuthorize("hasRole('RECRUITER')")
     @PostMapping
-    public ResponseEntity<Job> createJob(@RequestBody CreateJobRequestDto request) {
-        var context = UserContext.get();
-        return ResponseEntity.ok(jobService.createJob(request, context.getUserId(), context.getRole()));
+    public ResponseEntity<Job> createJob(@Valid @RequestBody CreateJobRequestDto request) {
+        return ResponseEntity.ok(jobService.createJob(request, getUserId()));
     }
 
+
+    // Todo : do not return job directly make dto
     @PreAuthorize("hasRole('RECRUITER')")
     @GetMapping("/my-jobs")
-    public ResponseEntity<List<Job>> getMyJobs() {
-        var context = UserContext.get();
-        return ResponseEntity.ok(jobService.getJobsByRecruiter(context.getUserId(), context.getRole()));
+    public ResponseEntity<Page<Job>> getMyJobs(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = getPageable(page, size);
+        return ResponseEntity.ok(jobService.getJobsByRecruiter(getUserId(),pageable));
     }
 
     @PreAuthorize("hasRole('RECRUITER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteJob(@PathVariable UUID id) {
-        var context = UserContext.get();
-        jobService.deleteJob(id, context.getUserId(), context.getRole());
+        jobService.deleteJob(id, getUserId());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<JobResponseDto> getJobById(@PathVariable UUID id) {
         return ResponseEntity.ok(jobService.getJobById(id));
+    }
+
+    private Pageable getPageable(int page, int size) {
+        size = Math.min(size, 50);
+        return PageRequest.of(page, size, Sort.by("createdAt").descending());
+    }
+
+    private UUID getUserId() {
+        return UserContext.get().getUserId();
     }
 }

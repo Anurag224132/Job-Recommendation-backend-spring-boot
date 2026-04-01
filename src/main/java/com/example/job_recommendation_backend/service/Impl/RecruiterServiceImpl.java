@@ -37,11 +37,6 @@ public class RecruiterServiceImpl implements RecruiterService {
     private final String uploadDir = System.getProperty("user.dir") + "/uploads/resumes";
 
     @Override
-    public List<JobAnalyticsDto> getRecruiterAnalytics(UUID userId) {
-        return applicationRepository.getJobAnalytics(userId);
-    }
-
-    @Override
     public Map<String, List<JobAnalyticsDto>> getAnalytics(UUID userId) {
         List<JobAnalyticsDto> data = applicationRepository.getJobAnalytics(userId);
         return Map.of("applicationsPerJob", data);
@@ -137,10 +132,14 @@ public class RecruiterServiceImpl implements RecruiterService {
     }
 
     @Override
-    public ResponseEntity<InputStreamResource> downloadResume(UUID appId) {
+    public ResponseEntity<InputStreamResource> downloadResume(UUID appId,UUID userId) {
 
         Application app = applicationRepository.findById(appId)
                 .orElseThrow(() -> new RuntimeException("Application not found"));
+
+        if (!app.getJob().getUser().getId().equals(userId)) {
+            throw new RuntimeException("Not authorized");
+        }
 
         User user = app.getUser();
 
@@ -165,13 +164,9 @@ public class RecruiterServiceImpl implements RecruiterService {
     }
 
     @Override
-    public List<RecruiterDashboardDto> getRecruiterDashboard(UUID recruiterId, UUID userId) {
+    public List<RecruiterDashboardDto> getRecruiterDashboard( UUID userId) {
 
-        if (!recruiterId.equals(userId)) {
-            throw new RuntimeException("Not authorized");
-        }
-
-        List<Application> apps = applicationRepository.findAllByRecruiter(recruiterId);
+        List<Application> apps = applicationRepository.findAllByRecruiter(userId);
 
         Map<Job, List<Application>> grouped =
                 apps.stream().collect(Collectors.groupingBy(Application::getJob));

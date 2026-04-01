@@ -12,11 +12,17 @@ import java.util.List;
 import java.util.UUID;
 
 public interface JobService {
-    List<Job> getAllActiveJobs();
-    Job createJob(CreateJobRequestDto request, UUID userId, Role role);
-    List<Job> getJobsByRecruiter(UUID userId, Role role);
-    void deleteJob(UUID jobId, UUID userId, Role role);
+
+    Page<Job> getAllActiveJobs(Pageable pageable);
+
+    Job createJob(CreateJobRequestDto request, UUID userId);
+
+    Page<Job> getJobsByRecruiter(UUID userId,Pageable pageable);
+
+    void deleteJob(UUID jobId, UUID userId);
+
     List<ApplicationResponseDto> getUserApplications(UUID userId);
+
     JobResponseDto getJobById(UUID jobId);
     
     Page<JobResponseDto> searchJobs(String q, String location, Boolean remote, 

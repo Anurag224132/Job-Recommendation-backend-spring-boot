@@ -1,5 +1,6 @@
 package com.example.job_recommendation_backend.controller;
 
+import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.ResumeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
@@ -19,24 +20,27 @@ public class ResumeController {
 
 
     @PostMapping
-    public ResponseEntity<?> uploadResume(@RequestParam("resume") MultipartFile file, @RequestAttribute("userId") UUID userId) {
-        Map<String, Object> response = resumeService.uploadResume(file, userId);
+    public ResponseEntity<?> uploadResume(@RequestParam("resume") MultipartFile file) {
+        Map<String, Object> response = resumeService.uploadResume(file, getUserId());
         return ResponseEntity.ok(response);
     }
 
 
-    @GetMapping("/download/{filename}")
-    public ResponseEntity<InputStreamResource> downloadResume(@PathVariable String filename) {
-        return resumeService.downloadResume(filename);
+    @GetMapping("/download")
+    public ResponseEntity<InputStreamResource> downloadResume() {
+        return resumeService.downloadResume(getUserId());
     }
 
 
     @PostMapping("/recommend-jobs")
-    public ResponseEntity<?> recommendJobs(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> recommendJobs() {
 
-        UUID userId = UUID.fromString(body.get("userId"));
-        Map<String, Object> response = resumeService.recommendJobs(userId);
+        Map<String, Object> response = resumeService.recommendJobs(getUserId());
 
         return ResponseEntity.ok(response);
+    }
+
+    private UUID getUserId(){
+        return UserContext.get().getUserId();
     }
 }

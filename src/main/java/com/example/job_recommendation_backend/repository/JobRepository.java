@@ -58,7 +58,7 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
 
     @Modifying
     @Transactional
-    @Query("UPDATE Job j SET j.isActive = NOT j.isActive WHERE j.id = :id")
+    @Query("UPDATE Job j SET j.isActive = CASE  WHEN j.isActive = true THEN false ELSE true END WHERE j.id = :id ")
     int toggleJobStatus(@Param("id") UUID id);
 
     @Modifying
@@ -68,7 +68,9 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
 
     List<Job> findByIsActiveTrueOrderByCreatedAtDesc();
 
+    Page<Job> findByIsActiveTrueAndDeletedAtIsNull(Pageable pageable);
+
     @Query("select j from Job j where j.user.id = :recruiterId")
-    List<Job> findByRecruiterId(@Param("recruiterId") UUID recruiterId);
+    Page<Job> findByRecruiterId(UUID recruiterId, Pageable pageable);
 
 }

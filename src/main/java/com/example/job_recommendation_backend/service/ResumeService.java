@@ -11,7 +11,7 @@ public interface ResumeService {
 
     Map<String, Object> uploadResume(MultipartFile file, UUID userId);
 
-    ResponseEntity<InputStreamResource> downloadResume(String filename);
+    ResponseEntity<InputStreamResource> downloadResume(UUID userID);
 
     Map<String, Object> recommendJobs(UUID userId);
 }

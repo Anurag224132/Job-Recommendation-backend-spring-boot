@@ -4,6 +4,7 @@ import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.repository.JobRepository;
 import com.example.job_recommendation_backend.repository.UserRepository;
+import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.ResumeService;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -113,27 +114,45 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     @Override
-    public ResponseEntity<InputStreamResource> downloadResume(String filename) {
+    public ResponseEntity<InputStreamResource> downloadResume(UUID userId) {
 
         try {
-            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-            Path filePath = uploadPath.resolve(filename).normalize();
+            UUID currentUserId = UserContext.get().getUserId();
 
-            if (!filePath.startsWith(uploadPath) || !Files.exists(filePath)) {
+            if (!currentUserId.equals(userId)) {
+                throw new RuntimeException("Not authorized");
+            }
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            String filename = user.getResumePath();
+
+            if (filename == null) {
                 throw new RuntimeException("Resume not found");
             }
 
-            InputStreamResource resource =
-                    new InputStreamResource(new FileInputStream(filePath.toFile()));
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Path filePath = uploadPath.resolve(filename).normalize();
+
+            if (!filePath.startsWith(uploadPath)) {
+                throw new RuntimeException("Invalid file path");
+            }
+
+            if (!Files.exists(filePath)) {
+                throw new RuntimeException("File not found");
+            }
+
+            Resource resource = new UrlResource(filePath.toUri());
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=" + filename)
+                            "attachment; filename=\"" + filename + "\"")
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .body(resource);
+                    .body(new InputStreamResource(resource.getInputStream()));
 
-        } catch (Exception err) {
-            throw handleError(err, "resume download");
+        } catch (Exception e) {
+            throw new RuntimeException("Error downloading file", e);
         }
     }
 
@@ -148,6 +167,7 @@ public class ResumeServiceImpl implements ResumeService {
                 throw new RuntimeException("User skills not found");
             }
 
+            // TODO : have to think again about this query this would be slow query in big db
             List<Job> jobs = jobRepository.findAll();
 
             List<Map<String, Object>> jobList = jobs.stream().map(job -> {
@@ -185,6 +205,10 @@ public class ResumeServiceImpl implements ResumeService {
 
         if (file == null || file.isEmpty()) {
             throw new RuntimeException("No file uploaded");
+        }
+
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new RuntimeException("File too large");
         }
 
         String originalName = file.getOriginalFilename();

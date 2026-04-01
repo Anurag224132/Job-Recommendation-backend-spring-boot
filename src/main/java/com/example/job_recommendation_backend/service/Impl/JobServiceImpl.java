@@ -11,6 +11,7 @@ import com.example.job_recommendation_backend.enums.Role;
 import com.example.job_recommendation_backend.repository.ApplicationRepository;
 import com.example.job_recommendation_backend.repository.JobRepository;
 import com.example.job_recommendation_backend.repository.UserRepository;
+import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.JobService;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,11 +39,14 @@ public class JobServiceImpl implements JobService {
     @Autowired
     private ApplicationRepository applicationRepository;
 
-    public List<Job> getAllActiveJobs() {
-        return jobRepository.findByIsActiveTrueOrderByCreatedAtDesc();
+    @Override
+    public Page<Job> getAllActiveJobs(Pageable pageable) {
+        return jobRepository.findByIsActiveTrueAndDeletedAtIsNull(pageable);
     }
 
-    public Job createJob(CreateJobRequestDto request, UUID userId, Role role){
+    @Override
+    public Job createJob(CreateJobRequestDto request, UUID userId){
+        Role role= UserContext.get().getRole();
         if(role != Role.recruiter){
             throw new RuntimeException("You are not allowed to perform this action");
         }
@@ -59,20 +63,25 @@ public class JobServiceImpl implements JobService {
                 .remote(request.getRemote())
                 .salary(request.getSalary())
                 .type(request.getType())
+                .requiredSkills(request.getRequiredSkills())
                 .build();
         jobRepository.save(job);
         return job;
     }
 
-    public List<Job> getJobsByRecruiter(UUID userId,Role role) {
+    @Override
+    public Page<Job> getJobsByRecruiter(UUID userId,Pageable pageable) {
 
+        Role role=UserContext.get().getRole();
         if(role != Role.recruiter){
             throw new RuntimeException("Only recruiters are allowed to perform this action");
         }
-        return jobRepository.findByRecruiterId(userId);
+        return jobRepository.findByRecruiterId(userId,pageable);
     }
 
-    public void deleteJob(UUID jobId, UUID userId, Role role) {
+    @Override
+    public void deleteJob(UUID jobId, UUID userId) {
+        Role role=UserContext.get().getRole();
 
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new RuntimeException("Job not found"));
@@ -85,6 +94,7 @@ public class JobServiceImpl implements JobService {
         jobRepository.save(job);
     }
 
+    @Override
     public List<ApplicationResponseDto> getUserApplications(UUID userId) {
 
         List<Application> applications =
@@ -96,6 +106,7 @@ public class JobServiceImpl implements JobService {
                 .collect(Collectors.toList());
     }
 
+    @Override
     public JobResponseDto getJobById(UUID jobId){
 
         Job job = jobRepository.findById(jobId).orElseThrow(()-> new RuntimeException("Job not found"));
