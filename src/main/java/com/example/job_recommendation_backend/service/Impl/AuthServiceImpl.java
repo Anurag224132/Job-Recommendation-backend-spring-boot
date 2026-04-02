@@ -16,6 +16,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+
+import com.example.job_recommendation_backend.exception.CustomApiException;
+import com.example.job_recommendation_backend.exception.ResourceNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -43,10 +47,12 @@ public class AuthServiceImpl implements AuthService {
     private static final String OTP_FORGOT_PREFIX = "OTP:FORGOT:";
     private static final int OTP_EXPIRY_MINUTES = 5;
 
+    // Todo : Track attempts in Redis & Block after 3–5 tries
+
     @Override
     public void initiateRegistration(RegisterUserDto registerUserDto) {
         if (userRepository.findByEmail(registerUserDto.getEmail()).isPresent()) {
-            throw new RuntimeException("User with this email already exists");
+            throw new CustomApiException(HttpStatus.CONFLICT, "User with this email already exists");
         }
         sendAndStoreOtp(registerUserDto.getEmail(), registerUserDto.getName(), OTP_SIGNUP_PREFIX);
     }
@@ -57,11 +63,11 @@ public class AuthServiceImpl implements AuthService {
         String storedOtp = redisTemplate.opsForValue().get(key);
 
         if (storedOtp == null) {
-            throw new RuntimeException("OTP has expired or email is incorrect");
+            throw new CustomApiException(HttpStatus.BAD_REQUEST, "OTP has expired or email is incorrect");
         }
 
         if (!storedOtp.equals(otp)) {
-            throw new RuntimeException("Invalid OTP");
+            throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid OTP");
         }
 
         User user = User.builder()
@@ -87,10 +93,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse login(LoginRequest loginRequest) {
         User user = userRepository.findByEmail(loginRequest.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", loginRequest.getEmail()));
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid credentials");
+            throw new CustomApiException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
 
         if (user.getLastLogin() == null) {
@@ -106,24 +112,19 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserResponseDto getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
         return UserResponseDto.fromEntity(user);
     }
 
     @Override
     public void resendOtp(String email) {
-        Optional<User> userOpt= userRepository.findByEmail(email);
-        if(!userOpt.isPresent()){
-            throw new RuntimeException("User does not exist with given email");
-        }
-        User user = userOpt.get();
-        sendAndStoreOtp(email, user.getName(), OTP_SIGNUP_PREFIX);
+        sendAndStoreOtp(email, "User", OTP_SIGNUP_PREFIX);
     }
 
     @Override
     public void initiateForgotPassword(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
 
         sendAndStoreOtp(email, user.getName(), OTP_FORGOT_PREFIX);
     }
@@ -134,14 +135,14 @@ public class AuthServiceImpl implements AuthService {
         String storedOtp = redisTemplate.opsForValue().get(key);
 
         if (storedOtp == null || !storedOtp.equals(otp)) {
-            throw new RuntimeException("Invalid or expired OTP");
+            throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid or expired OTP");
         }
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
 
         if (passwordEncoder.matches(newPassword, user.getPassword())) {
-            throw new RuntimeException("New password cannot be the same as the old password");
+            throw new CustomApiException(HttpStatus.BAD_REQUEST, "New password cannot be the same as the old password");
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));

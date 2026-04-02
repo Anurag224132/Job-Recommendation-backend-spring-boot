@@ -18,6 +18,7 @@ public class ResumeController {
     @Autowired
     private ResumeService resumeService;
 
+    //Todo : remove all ResponseEntity<?> with some dto
 
     @PostMapping
     public ResponseEntity<?> uploadResume(@RequestParam("resume") MultipartFile file) {

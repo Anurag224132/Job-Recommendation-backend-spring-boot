@@ -12,9 +12,15 @@ import com.example.job_recommendation_backend.repository.JobRepository;
 import com.example.job_recommendation_backend.service.RecruiterService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+
+import com.example.job_recommendation_backend.exception.CustomApiException;
+import com.example.job_recommendation_backend.exception.ResourceNotFoundException;
 
 import java.io.FileInputStream;
 import java.nio.file.Path;
@@ -43,23 +49,27 @@ public class RecruiterServiceImpl implements RecruiterService {
     }
 
     @Override
-    public SkillGapDto skillGapAnalysis(UUID jobId, UUID userId) {
+    public SkillGapDto skillGapAnalysis(UUID jobId, UUID userId,Pageable pageable) {
 
         Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
 
         if (!job.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Not authorized");
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized");
         }
 
-        List<Application> applications = applicationRepository.findApplicantsByJobId(jobId);
+        Page<Application> applications = applicationRepository.findApplicantsByJobId(jobId, pageable);
 
-        Set<String> required = job.getRequiredSkills().stream()
+        Set<String> required = job.getRequiredSkills() == null
+                ? Set.of()
+                : job.getRequiredSkills().stream()
                 .map(s -> s.trim().toLowerCase())
                 .collect(Collectors.toSet());
 
         Set<String> applicantSkills = applications.stream()
-                .flatMap(a -> a.getUser().getSkills().stream())
+                .flatMap(a -> a.getUser().getSkills() == null
+                        ? java.util.stream.Stream.empty()
+                        : a.getUser().getSkills().stream())
                 .map(s -> s.trim().toLowerCase())
                 .collect(Collectors.toSet());
 
@@ -71,16 +81,16 @@ public class RecruiterServiceImpl implements RecruiterService {
     }
 
     @Override
-    public List<ApplicantDto> getJobApplicants(UUID jobId, UUID userId) {
+    public List<ApplicantDto> getJobApplicants(UUID jobId, UUID userId,Pageable pageable) {
 
         Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
 
         if (!job.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Not authorized");
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized");
         }
 
-        List<Application> apps = applicationRepository.findApplicantsByJobId(jobId);
+        Page<Application> apps = applicationRepository.findApplicantsByJobId(jobId,pageable);
 
         return apps.stream().map(a ->
                 new ApplicantDto(
@@ -97,10 +107,10 @@ public class RecruiterServiceImpl implements RecruiterService {
     public Job updateJob(UUID jobId, UUID userId, Map<String, Object> body) {
 
         Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
 
         if (!job.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Not authorized");
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized");
         }
 
         if (body.get("title") != null)
@@ -109,8 +119,17 @@ public class RecruiterServiceImpl implements RecruiterService {
         if (body.get("description") != null)
             job.setDescription((String) body.get("description"));
 
-        if (body.get("requiredSkills") != null)
-            job.setRequiredSkills((List<String>) body.get("requiredSkills"));
+        if (body.get("requiredSkills") != null){
+            Object skillsObj = body.get("requiredSkills");
+
+            if (skillsObj instanceof List<?>) {
+                List<String> skills = ((List<?>) skillsObj)
+                        .stream()
+                        .map(Object::toString)
+                        .toList();
+                job.setRequiredSkills(skills);
+            }
+        }
 
         return jobRepository.save(job);
     }
@@ -119,10 +138,10 @@ public class RecruiterServiceImpl implements RecruiterService {
     public Map<String, Object> toggleJobActive(UUID jobId, UUID userId) {
 
         Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
 
         if (!job.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Not authorized");
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized");
         }
 
         job.setIsActive(!job.getIsActive());
@@ -135,39 +154,45 @@ public class RecruiterServiceImpl implements RecruiterService {
     public ResponseEntity<InputStreamResource> downloadResume(UUID appId,UUID userId) {
 
         Application app = applicationRepository.findById(appId)
-                .orElseThrow(() -> new RuntimeException("Application not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Application", "id", appId.toString()));
 
         if (!app.getJob().getUser().getId().equals(userId)) {
-            throw new RuntimeException("Not authorized");
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized");
         }
 
         User user = app.getUser();
 
         if (user.getResumePath() == null) {
-            throw new RuntimeException("Resume not found");
+            throw new CustomApiException(HttpStatus.NOT_FOUND, "Resume not found");
         }
 
         try {
-            Path filePath = Paths.get(uploadDir, user.getResumePath());
 
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Path filePath = uploadPath.resolve(user.getResumePath()).normalize();
+
+            if (!filePath.startsWith(uploadPath)) {
+                throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file path");
+            }
             InputStreamResource resource =
                     new InputStreamResource(new FileInputStream(filePath.toFile()));
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=" + user.getName() + "_Resume")
+                            "attachment; filename=\"" + user.getName() + "_Resume.pdf\"")
                     .body(resource);
 
         } catch (Exception e) {
-            throw new RuntimeException("Error downloading resume");
+            throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error downloading resume");
         }
     }
 
     @Override
-    public List<RecruiterDashboardDto> getRecruiterDashboard( UUID userId) {
+    public List<RecruiterDashboardDto> getRecruiterDashboard( UUID userId, Pageable pageable) {
 
-        List<Application> apps = applicationRepository.findAllByRecruiter(userId);
+        Page<Application> apps = applicationRepository.findAllByRecruiter(userId, pageable);
 
+        //Todo: have to move aggregation on db level or paginate it for heavy calculation
         Map<Job, List<Application>> grouped =
                 apps.stream().collect(Collectors.groupingBy(Application::getJob));
 

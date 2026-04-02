@@ -13,8 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
+
 import java.util.UUID;
 
 @Repository
@@ -65,8 +64,6 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
     @Transactional
     @Query("UPDATE Job j SET j.deletedAt = CURRENT_TIMESTAMP WHERE j.user.id = :userId")
     void softDeleteJobsByUser(@Param("userId") UUID userId);
-
-    List<Job> findByIsActiveTrueOrderByCreatedAtDesc();
 
     Page<Job> findByIsActiveTrueAndDeletedAtIsNull(Pageable pageable);
 

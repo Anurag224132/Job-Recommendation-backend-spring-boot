@@ -3,6 +3,7 @@ package com.example.job_recommendation_backend.service;
 import com.example.job_recommendation_backend.DTO.*;
 import com.example.job_recommendation_backend.entity.Job;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
@@ -19,12 +20,12 @@ public interface RecruiterService {
     // =========================
     // ✅ Skill Gap Analysis
     // =========================
-    SkillGapDto skillGapAnalysis(UUID jobId, UUID userId);
+    SkillGapDto skillGapAnalysis(UUID jobId, UUID userId, Pageable pageable);
 
     // =========================
     // ✅ Job Applicants
     // =========================
-    List<ApplicantDto> getJobApplicants(UUID jobId, UUID userId);
+    List<ApplicantDto> getJobApplicants(UUID jobId, UUID userId, Pageable pageable);
 
     // =========================
     // ✅ Update Job
@@ -44,5 +45,5 @@ public interface RecruiterService {
     // =========================
     // ✅ Recruiter Dashboard
     // =========================
-    List<RecruiterDashboardDto> getRecruiterDashboard( UUID userId);
+    List<RecruiterDashboardDto> getRecruiterDashboard(UUID userId, Pageable pageable);
 }

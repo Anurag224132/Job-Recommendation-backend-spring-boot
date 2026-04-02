@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import com.example.job_recommendation_backend.DTO.*;
 import com.example.job_recommendation_backend.repository.ApplicationRepository;
+import com.example.job_recommendation_backend.exception.ResourceNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -47,7 +48,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     public String deleteUser(UUID id) {
-        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User", "id", id.toString()));
         user.setDeletedAt(LocalDateTime.now());
         userRepository.save(user);
 
@@ -56,7 +57,7 @@ public class AdminServiceImpl implements AdminService {
 
     public String changeRole(UUID id, Role role) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id.toString()));
 
         if (user.getRole() == role) {
             return "Role is already " + role;
@@ -99,7 +100,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     public String deleteJob(UUID id) {
-        Job job = jobRepository.findById(id).orElseThrow(() -> new RuntimeException("Job not found"));
+        Job job = jobRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Job", "id", id.toString()));
         job.setDeletedAt(LocalDateTime.now());
         jobRepository.save(job);
         return "Job deleted successfully";
@@ -162,18 +163,21 @@ public class AdminServiceImpl implements AdminService {
     }
 
     private LocalDateTime getStartDate(String range, LocalDateTime now) {
+        if (range == null) {
+            return now.minusDays(7);
+        }
         return switch (range.toLowerCase()) {
             case "week" -> now.minusDays(7);
             case "month" -> now.minusMonths(1);
             case "year" -> now.minusYears(1);
-            default -> LocalDateTime.of(1970, 1, 1, 0, 0);
+            default -> now.minusDays(7);
         };
     }
 
     public UserAnalyticsDto getUserAnalytics(UUID userId) {
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
 
         UserAnalyticsDto.UserAnalyticsDtoBuilder builder = UserAnalyticsDto.builder()
                 .userId(user.getId())
@@ -260,7 +264,7 @@ public class AdminServiceImpl implements AdminService {
     public String toggleJobStatus(UUID id) {
         int updated = jobRepository.toggleJobStatus(id);
         if (updated == 0) {
-            throw new RuntimeException("Job not found");
+            throw new ResourceNotFoundException("Job", "id", id.toString());
         }
         return "Job status toggled successfully";
     }
@@ -276,14 +280,14 @@ public class AdminServiceImpl implements AdminService {
     public String deleteApplication(UUID id) {
 
         Application application = applicationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Application not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Application", "id", id.toString()));
         application.setDeletedAt(LocalDateTime.now());
         applicationRepository.save(application);
         return "Application deleted successfully";
     }
 
     public String deleteInterview(UUID id) {
-        Interview interview = interviewRepository.findById(id).orElseThrow(() -> new RuntimeException("Interview not found"));
+        Interview interview = interviewRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Interview", "id", id.toString()));
         interview.setDeletedAt(LocalDateTime.now());
         interviewRepository.save(interview);
         return "Interview deleted successfully";

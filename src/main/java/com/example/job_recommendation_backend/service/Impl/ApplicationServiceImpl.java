@@ -13,8 +13,8 @@ import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.ApplicationService;
 import com.example.job_recommendation_backend.service.EmailService;
 import com.example.job_recommendation_backend.service.GoogleCalendarService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -22,7 +22,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
+
+import com.example.job_recommendation_backend.exception.CustomApiException;
+import com.example.job_recommendation_backend.exception.ResourceNotFoundException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,6 +40,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class ApplicationServiceImpl implements ApplicationService {
 
     private final ApplicationRepository applicationRepository;
@@ -63,7 +66,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     public long calculateFitScore(CalculateFitScoreDto req) {
         Job job = jobRepository.findById(req.getJobId())
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", req.getJobId().toString()));
 
         Set<String> requiredSkills = (job.getRequiredSkills() != null)
                 ? job.getRequiredSkills().stream()
@@ -90,14 +93,14 @@ public class ApplicationServiceImpl implements ApplicationService {
         UUID userId = context.getUserId();
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
 
         if(user.getResumePath() == null || user.getResumePath().isBlank()){
-            throw new RuntimeException("Please upload your resume first");
+            throw new CustomApiException("Please upload your resume first");
         }
 
         Job job = jobRepository.findById(request.getJobId())
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", request.getJobId().toString()));
 
         long fitScore = calculateFitScore(
                 CalculateFitScoreDto.builder()
@@ -115,13 +118,13 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .build();
 
         if(applicationRepository.existsByUserIdAndJobIdAndDeletedAtIsNull(user.getId(), job.getId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Already applied");
+            throw new CustomApiException(HttpStatus.BAD_REQUEST, "Already applied");
         }
 
         try {
             applicationRepository.save(application);
         } catch (DataIntegrityViolationException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Already applied");
+            throw new CustomApiException(HttpStatus.BAD_REQUEST, "Already applied");
         }
 
         return mapToResponse(application,null);
@@ -132,13 +135,13 @@ public class ApplicationServiceImpl implements ApplicationService {
             return getAllApplicationsForRecruiter(userId, pageable);
         if(role == Role.student)
             return getAllApplicationsForStudent(userId, pageable);
-        throw new RuntimeException("Invalid role");
+        throw new CustomApiException("Invalid role");
     }
 
     public ApplicationResponseDto checkApplication(UUID userId, UUID jobId){
 
         if (jobId == null) {
-            throw new RuntimeException("jobId is required");
+            throw new CustomApiException("jobId is required");
         }
 
         return applicationRepository
@@ -149,11 +152,11 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     public String deleteApplication(UUID applicationId, Role role, UUID userId){
         if(role != Role.recruiter){
-            throw new RuntimeException("Only recruiter can delete");
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "Only recruiter can delete");
         }
         int updated = applicationRepository.softDeleteByRecruiter(applicationId, userId);
         if(updated == 0){
-            throw new RuntimeException("Not allowed or application not found");
+            throw new CustomApiException(HttpStatus.BAD_REQUEST, "Not allowed or application not found");
         }
         return "Application deleted successfully";
     }
@@ -161,6 +164,15 @@ public class ApplicationServiceImpl implements ApplicationService {
     public ApplicationResponseDto updateApplicationStatus(UUID applicationId, UpdateStatusRequestDto request){
 
         // Todo: have to No ownership validation who can update any application
+        Application application = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Application", "id", applicationId.toString()));
+
+        UUID currentUserId = UserContext.get().getUserId();
+
+        if (!application.getJob().getUser().getId().equals(currentUserId)) {
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized to update this application");
+        }
+
         ApplicationStatus status = request.getStatus();
         String notes = request.getNotes();
 
@@ -171,10 +183,8 @@ public class ApplicationServiceImpl implements ApplicationService {
         if (!List.of(ApplicationStatus.pending, ApplicationStatus.interview_scheduled, ApplicationStatus.hired,
                 ApplicationStatus.rejected).contains(status)) {
 
-            throw new RuntimeException("Invalid status");
+            throw new CustomApiException("Invalid status");
         }
-        Application application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new RuntimeException("Application not found"));
         application.setStatus(status);
         if (notes != null) {
             application.setNotes(notes);
@@ -225,7 +235,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     public Resource downloadResume(UUID applicationId){
 
         Application application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new RuntimeException("Application not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Application", "id", applicationId.toString()));
 
 
         UUID currentUserId = UserContext.get().getUserId();
@@ -235,14 +245,13 @@ public class ApplicationServiceImpl implements ApplicationService {
         boolean isRecruiter = application.getJob().getUser().getId().equals(currentUserId);
 
         if (!(isOwner || isRecruiter)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "You are not allowed to download this resume");
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "You are not allowed to download this resume");
         }
 
         String resumeFilename = application.getResumePath();
 
         if (resumeFilename == null || resumeFilename.isBlank()) {
-            throw new RuntimeException("Resume not available");
+            throw new CustomApiException(HttpStatus.NOT_FOUND, "Resume not available");
         }
 
         Path uploadDir = Paths.get("uploads", "resumes").toAbsolutePath().normalize();
@@ -250,18 +259,18 @@ public class ApplicationServiceImpl implements ApplicationService {
 
 
         if (!filePath.startsWith(uploadDir)) {
-            throw new RuntimeException("Invalid file path");
+            throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file path");
         }
 
         if (!Files.exists(filePath)) {
-            throw new RuntimeException("Resume file not found on server");
+            throw new CustomApiException(HttpStatus.NOT_FOUND, "Resume file not found on server");
         }
 
         try {
             Resource resource = new UrlResource(filePath.toUri());
 
             if (!resource.exists() || !resource.isReadable()) {
-                throw new RuntimeException("File not readable");
+                throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "File not readable");
             }
 
             String ext = getFileExtension(resumeFilename);
@@ -272,7 +281,7 @@ public class ApplicationServiceImpl implements ApplicationService {
             return new RenamedResource(resource, cleanedName);
 
         } catch (MalformedURLException e) {
-            throw new RuntimeException("Error while reading file", e);
+            throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error while reading file");
         }
     }
 
@@ -289,7 +298,7 @@ public class ApplicationServiceImpl implements ApplicationService {
             try {
                 return resource.getInputStream();
             } catch (IOException e) {
-                throw new RuntimeException("Error reading file", e);
+                throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error reading file");
             }
         }
 
@@ -310,17 +319,18 @@ public class ApplicationServiceImpl implements ApplicationService {
         UUID currentUserId = UserContext.get().getUserId();
 
         Application app = applicationRepository.findById(appId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Application", "id", appId.toString()));
 
         if (!app.getJob().getUser().getId().equals(currentUserId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized");
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized");
         }
 
         String meetLink;
         try {
             meetLink = googleCalendarService.createMeetLink(interviewDate, app.getUser().getEmail());
         } catch (Exception e) {
-            meetLink = null;
+            log.error("Failed to create meet link", e);
+            throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to schedule interview");
         }
 
         app.setInterviewDate(interviewDate);
