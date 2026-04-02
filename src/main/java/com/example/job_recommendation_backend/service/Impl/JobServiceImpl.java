@@ -18,7 +18,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+
+import com.example.job_recommendation_backend.exception.CustomApiException;
+import com.example.job_recommendation_backend.exception.ResourceNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -48,9 +52,9 @@ public class JobServiceImpl implements JobService {
     public Job createJob(CreateJobRequestDto request, UUID userId){
         Role role= UserContext.get().getRole();
         if(role != Role.recruiter){
-            throw new RuntimeException("You are not allowed to perform this action");
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "You are not allowed to perform this action");
         }
-        User user= userRepository.findById(userId).orElseThrow(()-> new RuntimeException("User not found"));
+        User user= userRepository.findById(userId).orElseThrow(()-> new ResourceNotFoundException("User", "id", userId.toString()));
 
         Job job = Job.builder()
                 .title(request.getTitle())
@@ -74,7 +78,7 @@ public class JobServiceImpl implements JobService {
 
         Role role=UserContext.get().getRole();
         if(role != Role.recruiter){
-            throw new RuntimeException("Only recruiters are allowed to perform this action");
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "Only recruiters are allowed to perform this action");
         }
         return jobRepository.findByRecruiterId(userId,pageable);
     }
@@ -84,10 +88,10 @@ public class JobServiceImpl implements JobService {
         Role role=UserContext.get().getRole();
 
         Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
 
         if (role != Role.recruiter || !job.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Not authorized to delete this job.");
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized to delete this job.");
         }
 
         job.setDeletedAt(LocalDateTime.now());
@@ -109,7 +113,7 @@ public class JobServiceImpl implements JobService {
     @Override
     public JobResponseDto getJobById(UUID jobId){
 
-        Job job = jobRepository.findById(jobId).orElseThrow(()-> new RuntimeException("Job not found"));
+        Job job = jobRepository.findById(jobId).orElseThrow(()-> new ResourceNotFoundException("Job", "id", jobId.toString()));
 
         return mapJobToResponseDto(job);
     }
@@ -148,9 +152,13 @@ public class JobServiceImpl implements JobService {
             }
 
             if (skills != null && !skills.isEmpty()) {
-                List<String> skillList = Arrays.asList(skills.split(","));
+                List<String> skillList = Arrays.stream(skills.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList();
+
                 for (String skill : skillList) {
-                    predicates.add(cb.isMember(skill.trim(), root.get("requiredSkills")));
+                    predicates.add(cb.isMember(skill.trim().toLowerCase(), root.get("requiredSkills")));
                 }
             }
 
@@ -162,6 +170,13 @@ public class JobServiceImpl implements JobService {
     }
 
     private JobResponseDto mapJobToResponseDto(Job job) {
+
+        RecruiterDto recruiter = job.getUser() == null ? null :
+                RecruiterDto.builder()
+                        .name(job.getUser().getName())
+                        .email(job.getUser().getEmail())
+                        .build();
+
         return JobResponseDto.builder()
                 .id(job.getId())
                 .title(job.getTitle())
@@ -175,12 +190,7 @@ public class JobServiceImpl implements JobService {
                 .isActive(job.getIsActive())
                 .companyName(job.getCompanyName())
                 .createdAt(job.getCreatedAt())
-                .recruiter(
-                        RecruiterDto.builder()
-                                .name(job.getUser().getName())
-                                .email(job.getUser().getEmail())
-                                .build()
-                )
+                .recruiter(recruiter)
                 .build();
     }
 

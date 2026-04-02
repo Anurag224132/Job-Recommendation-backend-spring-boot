@@ -96,7 +96,7 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
                 JOIN FETCH a.job j
                 WHERE j.id = :jobId
             """)
-    List<Application> findApplicantsByJobId(UUID jobId);
+    Page<Application> findApplicantsByJobId(UUID jobId, Pageable pageable);
 
     @Query("""
                 SELECT a FROM Application a
@@ -104,5 +104,5 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
                 JOIN FETCH a.job j
                 WHERE j.user.id = :recruiterId
             """)
-    List<Application> findAllByRecruiter(UUID recruiterId);
+    Page<Application> findAllByRecruiter(UUID recruiterId,Pageable pageable);
 }

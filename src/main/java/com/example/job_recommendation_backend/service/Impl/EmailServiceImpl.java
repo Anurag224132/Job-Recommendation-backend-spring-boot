@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @Slf4j
@@ -34,18 +35,17 @@ public class EmailServiceImpl implements EmailService {
             helper.setTo(email);
             helper.setSubject("Verify Your Email Address");
 
-            String htmlContent = String.format(
-                    "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">" +
-                            "    <h2 style=\"color: #2563eb;\">Email Verification</h2>" +
-                            "    <p>Hello %s,</p>" +
-                            "    <p>Thank you for registering. Please use the following OTP to verify your email address:</p>" +
-                            "    <div style=\"background: #f4f4f4; padding: 10px; margin: 20px 0; text-align: center; font-size: 24px; letter-spacing: 5px;\">" +
-                            "        %s" +
-                            "    </div>" +
-                            "    <p>This OTP is valid for 15 minutes.</p>" +
-                            "    <p>If you didn't request this, please ignore this email.</p>" +
-                            "    <p>Best regards,<br>Your App Team</p>" +
-                            "</div>", name, otp);
+            String body = String.format(
+                    "<p>Hello %s,</p>" +
+                            "<p>Please use the OTP below to verify your email:</p>" +
+                            "<div style=\"background: #f4f4f4; padding: 10px; text-align: center; font-size: 24px; letter-spacing: 5px;\">" +
+                            "%s" +
+                            "</div>" +
+                            "<p>This OTP is valid for 15 minutes.</p>",
+                    name, otp
+            );
+
+            String htmlContent = buildEmailTemplate("Email Verification", body);
 
             helper.setText(htmlContent, true);
 
@@ -53,7 +53,6 @@ public class EmailServiceImpl implements EmailService {
             log.info("Verification email sent to: {}", email);
         } catch (MessagingException e) {
             log.error("Error sending verification email to {}: {}", email, e.getMessage());
-            throw new RuntimeException("Failed to send verification email", e);
         }
     }
 
@@ -68,26 +67,23 @@ public class EmailServiceImpl implements EmailService {
             helper.setTo(email);
             helper.setSubject("Password Reset OTP");
 
-            String htmlContent = String.format(
-                    "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">" +
-                        "    <h2 style=\"color: #2563eb;\">Password Reset Request</h2>" +
-                        "    <p>Hello %s,</p>" +
-                        "    <p>We received a request to reset your password. Please use the following OTP to complete the process:</p>" +
-                        "    <div style=\"background: #f4f4f4; padding: 10px; margin: 20px 0; text-align: center; font-size: 24px; letter-spacing: 5px;\">" +
-                        "        %s" +
-                        "    </div>" +
-                        "    <p>This OTP is valid for 15 minutes.</p>" +
-                        "    <p>If you didn't request this, please ignore this email and your password will remain unchanged.</p>" +
-                        "    <p>Best regards,<br>Your App Team</p>" +
-                        "</div>", name, otp);
+            String body = String.format(
+                    "<p>Hello %s,</p>" +
+                            "<p>Use the OTP below to reset your password:</p>" +
+                            "<div style=\"background: #f4f4f4; padding: 10px; text-align: center; font-size: 24px; letter-spacing: 5px;\">" +
+                            "%s" +
+                            "</div>" +
+                            "<p>This OTP is valid for 15 minutes.</p>",
+                    name, otp
+            );
+            String htmlContent = buildEmailTemplate("Password Reset", body);
 
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
             log.info("Password reset email sent to: {}", email);
-        } catch (MessagingException e) {
-            log.error("Error sending password reset email to {}: {}", email, e.getMessage());
-            throw new RuntimeException("Failed to send password reset email", e);
+        }catch (MessagingException e) {
+            log.error("Failed to send password reset email to {}: {}", email, e.getMessage());
         }
     }
 
@@ -101,23 +97,26 @@ public class EmailServiceImpl implements EmailService {
             helper.setFrom(fromEmail);
             helper.setTo(email);
             helper.setSubject("Interview Scheduled - " + jobTitle);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a");
+            String formattedDate = date.format(formatter);
 
-            String htmlContent = String.format(
-                    "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">" +
-                            "<h2 style=\"color: #16a34a;\">Interview Scheduled 🎉</h2>" +
-                            "<p>Hello %s,</p>" +
-                            "<p>Your interview for the position <strong>%s</strong> has been scheduled.</p>" +
+            String body = String.format(
+                    "<p>Hello %s,</p>" +
+                            "<p>Your interview for <strong>%s</strong> has been scheduled.</p>" +
                             "<p><strong>Date & Time:</strong> %s</p>" +
-                            "<p><strong>Meeting Link:</strong></p>" +
-                            "<p><a href=\"%s\">Join Interview</a></p>" +
-                            "<p>Please be available on time.</p>" +
-                            "<p>Best of luck!<br>Your App Team</p>" +
-                            "</div>",
-                    name,
-                    jobTitle,
-                    date,
-                    link
+                            "<p style=\"margin-top:20px;\">" +
+                            "<a href=\"%s\" target=\"_blank\" " +
+                            "style=\"background-color:#2563eb;color:white;padding:12px 18px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;\">" +
+                            "Join Interview" +
+                            "</a>" +
+                            "</p>" +
+                            "<p style=\"margin-top:20px; color:#6b7280; font-size:14px;\">" +
+                            "Please join 5 minutes before the scheduled time." +
+                            "</p>",
+                    name, jobTitle, formattedDate, link
             );
+
+            String htmlContent = buildEmailTemplate("Interview Scheduled 🎉", body);
 
             helper.setText(htmlContent, true);
 
@@ -128,5 +127,24 @@ public class EmailServiceImpl implements EmailService {
         } catch (Exception e) {
             log.error("Failed to send interview email to {}: {}", email, e.getMessage());
         }
+    }
+
+    private String buildEmailTemplate(String title, String bodyContent) {
+        return String.format(
+                "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">" +
+                        "<h2 style=\"color: #2563eb;\">%s</h2>" +
+                        "%s" +
+                        "<hr style=\"margin: 20px 0; border: none; border-top: 1px solid #eee;\"/>" +
+                        "<p style=\"color: #6b7280; font-size: 14px;\">" +
+                        "If you didn't request this, you can safely ignore this email." +
+                        "</p>" +
+                        "<p style=\"margin-top: 20px;\">" +
+                        "<strong>Best regards,</strong><br/>" +
+                        "Your App Team" +
+                        "</p>" +
+                        "</div>",
+                title,
+                bodyContent
+        );
     }
 }

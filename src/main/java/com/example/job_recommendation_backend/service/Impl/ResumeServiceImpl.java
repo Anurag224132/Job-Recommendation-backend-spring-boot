@@ -12,6 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.*;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+
+import com.example.job_recommendation_backend.exception.CustomApiException;
+import com.example.job_recommendation_backend.exception.ResourceNotFoundException;
 import org.springframework.util.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
@@ -59,7 +62,7 @@ public class ResumeServiceImpl implements ResumeService {
             Path filePath = uploadPath.resolve(filename).normalize();
 
             if (!filePath.startsWith(uploadPath)) {
-                throw new RuntimeException("Invalid file path");
+                throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file path");
             }
 
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
@@ -84,7 +87,7 @@ public class ResumeServiceImpl implements ResumeService {
             if (userId != null && mlData != null && mlData.get("skills") != null) {
 
                 User user = userRepository.findById(userId)
-                        .orElseThrow(() -> new RuntimeException("User not found"));
+                        .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
 
                 if (user.getResumePath() != null) {
                     Path oldPath = uploadPath.resolve(user.getResumePath());
@@ -120,27 +123,27 @@ public class ResumeServiceImpl implements ResumeService {
             UUID currentUserId = UserContext.get().getUserId();
 
             if (!currentUserId.equals(userId)) {
-                throw new RuntimeException("Not authorized");
+                throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized");
             }
 
             User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
 
             String filename = user.getResumePath();
 
             if (filename == null) {
-                throw new RuntimeException("Resume not found");
+                throw new CustomApiException(HttpStatus.NOT_FOUND, "Resume not found");
             }
 
             Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
             Path filePath = uploadPath.resolve(filename).normalize();
 
             if (!filePath.startsWith(uploadPath)) {
-                throw new RuntimeException("Invalid file path");
+                throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file path");
             }
 
             if (!Files.exists(filePath)) {
-                throw new RuntimeException("File not found");
+                throw new CustomApiException(HttpStatus.NOT_FOUND, "File not found");
             }
 
             Resource resource = new UrlResource(filePath.toUri());
@@ -152,7 +155,7 @@ public class ResumeServiceImpl implements ResumeService {
                     .body(new InputStreamResource(resource.getInputStream()));
 
         } catch (Exception e) {
-            throw new RuntimeException("Error downloading file", e);
+            throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error downloading file");
         }
     }
 
@@ -161,10 +164,10 @@ public class ResumeServiceImpl implements ResumeService {
 
         try {
             User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
 
             if (user.getSkills() == null || user.getSkills().isEmpty()) {
-                throw new RuntimeException("User skills not found");
+                throw new CustomApiException(HttpStatus.NOT_FOUND, "User skills not found");
             }
 
             // TODO : have to think again about this query this would be slow query in big db
@@ -204,16 +207,16 @@ public class ResumeServiceImpl implements ResumeService {
     private void validateFile(MultipartFile file) {
 
         if (file == null || file.isEmpty()) {
-            throw new RuntimeException("No file uploaded");
+            throw new CustomApiException(HttpStatus.BAD_REQUEST, "No file uploaded");
         }
 
         if (file.getSize() > 5 * 1024 * 1024) {
-            throw new RuntimeException("File too large");
+            throw new CustomApiException(HttpStatus.valueOf(413), "File too large");
         }
 
         String originalName = file.getOriginalFilename();
         if (originalName == null) {
-            throw new RuntimeException("Invalid file name");
+            throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file name");
         }
 
         String filename = originalName.toLowerCase();
@@ -222,24 +225,20 @@ public class ResumeServiceImpl implements ResumeService {
         List<String> allowed = List.of(".pdf", ".doc", ".docx", ".txt");
 
         if (!allowed.contains(ext)) {
-            throw new RuntimeException(
-                    "Only PDF, DOC, DOCX and TXT files are allowed"
-            );
+            throw new CustomApiException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Only PDF, DOC, DOCX and TXT files are allowed");
         }
     }
 
-    private RuntimeException handleError(Exception err, String context) {
+    private CustomApiException handleError(Exception err, String context) {
 
         System.err.println("❌ " + context + " error: " + err.getMessage());
 
         if (err instanceof org.springframework.web.client.HttpStatusCodeException ex) {
-            return new RuntimeException(
-                    "Request failed (API error): " + ex.getResponseBodyAsString()
-            );
+            return new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Request failed (API error): " + ex.getResponseBodyAsString());
         } else if (err instanceof org.springframework.web.client.ResourceAccessException) {
-            return new RuntimeException("No response from service");
+            return new CustomApiException(HttpStatus.SERVICE_UNAVAILABLE, "No response from service");
         } else {
-            return new RuntimeException(context + " failed: " + err.getMessage());
+            return new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, context + " failed: " + err.getMessage());
         }
     }
 }

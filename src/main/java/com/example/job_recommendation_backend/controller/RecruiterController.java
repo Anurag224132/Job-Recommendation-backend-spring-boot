@@ -6,6 +6,9 @@ import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.RecruiterService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -28,13 +31,18 @@ public class RecruiterController {
     }
 
     @GetMapping("/jobs/{jobId}/skill-gap")
-    public ResponseEntity<SkillGapDto>skillGapAnalysis(@PathVariable UUID jobId) {
-        return ResponseEntity.ok(recruiterService.skillGapAnalysis(jobId, getUserId() ));
+    public ResponseEntity<SkillGapDto>skillGapAnalysis(@PathVariable UUID jobId,
+                                                       @RequestParam(defaultValue = "0") int page,
+                                                       @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable= getPageable(page, size);
+        return ResponseEntity.ok(recruiterService.skillGapAnalysis(jobId, getUserId(), pageable));
     }
 
     @GetMapping("/jobs/{jobId}/applicants")
-    public ResponseEntity<List<ApplicantDto>> getJobApplicants(@PathVariable UUID jobId) {
-        return ResponseEntity.ok(recruiterService.getJobApplicants(jobId, getUserId() ));
+    public ResponseEntity<List<ApplicantDto>> getJobApplicants(@PathVariable UUID jobId,@RequestParam(defaultValue = "0") int page,
+                                                               @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = getPageable(page, size);
+        return ResponseEntity.ok(recruiterService.getJobApplicants(jobId, getUserId(), pageable));
     }
 
 
@@ -55,13 +63,19 @@ public class RecruiterController {
     }
 
     @GetMapping("/dashboard")
-    public ResponseEntity<List<RecruiterDashboardDto>> getDashboard() {
+    public ResponseEntity<List<RecruiterDashboardDto>> getDashboard(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = getPageable(page, size);
         return ResponseEntity.ok(
-                recruiterService.getRecruiterDashboard(getUserId())
+                recruiterService.getRecruiterDashboard(getUserId(), pageable)
         );
     }
 
     private UUID getUserId() {
         return UserContext.get().getUserId();
+    }
+
+    private Pageable getPageable(int page, int size) {
+        size = Math.min(size, 50);
+        return PageRequest.of(page, size, Sort.by("createdAt").descending());
     }
 }

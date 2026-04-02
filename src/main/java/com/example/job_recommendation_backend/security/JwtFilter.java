@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -15,9 +16,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 
 @Component
+@Slf4j
 public class JwtFilter extends OncePerRequestFilter {
 
     @Autowired
@@ -44,7 +45,7 @@ public class JwtFilter extends OncePerRequestFilter {
                         return;
                     }
                 } catch (Exception e) {
-                    System.err.println("⚠️ Redis is down or not configured. Skipping blacklist check.");
+                    log.warn("Redis unavailable, skipping blacklist check");
                 }
 
                 Claims claims = jwtUtil.getClaims(token);
@@ -52,14 +53,16 @@ public class JwtFilter extends OncePerRequestFilter {
                 String role = claims.get("role", String.class);
 
                 // Diagnostic Log
-                System.out.println("🔍 Auth Filter: User=" + email + ", Role=" + role);
+                log.info("Auth Filter: User={}, Role={}", email, role);
 
                 SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
 
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                         email, null, Collections.singletonList(authority));
 
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
             }
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
