@@ -35,4 +35,7 @@ build/
 ### Sensitive config — never commit real values ###
 .env
 .env.local
-src/main/resources/client_secret_593710041410-hppjfapopi46c1dvrijk33tmdan5f7ce.apps.googleusercontent.com.json
+src/main/resources/client_secret_593710041410-hppjfapopi46c1dvrijk33tmdan5f7ce.apps.googleusercontent.com.json.DS_Store
+src/.DS_Store
+src/main/.DS_Store
+uploads/
