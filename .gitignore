@@ -35,6 +35,4 @@ build/
 ### Sensitive config — never commit real values ###
 .env
 .env.local
-src/main/resources/application.properties
-src/main/resources/application.yml
 src/main/resources/client_secret_593710041410-hppjfapopi46c1dvrijk33tmdan5f7ce.apps.googleusercontent.com.json
