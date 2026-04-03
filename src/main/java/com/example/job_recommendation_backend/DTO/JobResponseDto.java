@@ -23,5 +23,6 @@ public class JobResponseDto {
     private String companyName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String recruiterName;
     private RecruiterDto recruiter;
 }

@@ -4,6 +4,7 @@ import com.example.job_recommendation_backend.DTO.*;
 import com.example.job_recommendation_backend.enums.Role;
 import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.ApplicationService;
+import com.example.job_recommendation_backend.exception.CustomApiException;
 import jakarta.validation.Valid;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -11,10 +12,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -29,8 +32,14 @@ public class ApplicationController {
 
 
     @PostMapping("/calculate-fit")
-    public ResponseEntity<Long> calculateFitScore(@RequestBody CalculateFitScoreDto request) {
-        return ResponseEntity.ok(applicationService.calculateFitScore(request));
+    public ResponseEntity<Map<String, Long>> calculateFitScore(@RequestBody CalculateFitScoreDto request) {
+        long score = applicationService.calculateFitScore(request);
+        return ResponseEntity.ok(Map.of("score", score));
+    }
+
+    @PostMapping("/calculate-fit-batch")
+    public ResponseEntity<Map<UUID, Long>> calculateFitScores(@RequestBody CalculateFitScoreBatchRequestDto request) {
+        return ResponseEntity.ok(applicationService.calculateFitScores(request));
     }
 
 
@@ -41,17 +50,21 @@ public class ApplicationController {
 
 
     @PreAuthorize("hasRole('RECRUITER')")
-    @GetMapping("/recruiter")
+    @GetMapping("/recruiter/{recruiterId}")
     public ResponseEntity<Page<ApplicationResponseDto>> getRecruiterApplications(
+            @PathVariable UUID recruiterId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
         Pageable pageable = getPageable(page, size);
         var context = UserContext.get();
-        UUID recruiterId = context.getUserId();
-        Role role = context.getRole();
+        UUID authenticatedId = context.getUserId();
 
-        return ResponseEntity.ok(applicationService.allApplications(recruiterId, role, pageable));
+        if (!authenticatedId.equals(recruiterId)) {
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "You can only view your own applications");
+        }
+
+        return ResponseEntity.ok(applicationService.allApplications(recruiterId, context.getRole(), pageable));
     }
 
 

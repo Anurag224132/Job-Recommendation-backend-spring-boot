@@ -59,14 +59,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query(value = """
                 SELECT
-                    COUNT(*) as totalUsers,
-                    COALESCE(SUM(CASE WHEN role = 'student' THEN 1 ELSE 0 END),0) as studentCount,
-                    COALESCE(SUM(CASE WHEN role = 'recruiter' THEN 1 ELSE 0 END),0) as recruiterCount,
-                    COALESCE(SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END),0) as adminCount,
+                    (SELECT COUNT(*) FROM users WHERE deleted_at IS NULL) as totalUsers,
+                    (SELECT COUNT(*) FROM users WHERE role = 'student' AND deleted_at IS NULL) as studentCount,
+                    (SELECT COUNT(*) FROM users WHERE role = 'recruiter' AND deleted_at IS NULL) as recruiterCount,
+                    (SELECT COUNT(*) FROM users WHERE role = 'admin' AND deleted_at IS NULL) as adminCount,
                     (SELECT COUNT(*) FROM jobs WHERE deleted_at IS NULL) as totalJobs,
                     (SELECT COUNT(*) FROM applications WHERE deleted_at IS NULL) as totalApplications
-                FROM users
-                WHERE deleted_at IS NULL
             """, nativeQuery = true)
     AnalyticsCounts getAnalyticsCounts();
 }

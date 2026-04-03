@@ -67,7 +67,7 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
 
     Page<Job> findByIsActiveTrueAndDeletedAtIsNull(Pageable pageable);
 
-    @Query("select j from Job j where j.user.id = :recruiterId")
+    @Query("select j from Job j where j.user.id = :recruiterId AND j.deletedAt IS NULL")
     Page<Job> findByRecruiterId(UUID recruiterId, Pageable pageable);
 
 }

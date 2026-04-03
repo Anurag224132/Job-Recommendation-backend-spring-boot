@@ -3,6 +3,7 @@ package com.example.job_recommendation_backend.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
@@ -65,11 +66,13 @@ public class Job {
     private String companyName;
 
     @Builder.Default
+    @JsonIgnore
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Application> applications = new ArrayList<>();
 
 
     @Builder.Default
+    @JsonIgnore
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Interview> interviews = new ArrayList<>();
 }

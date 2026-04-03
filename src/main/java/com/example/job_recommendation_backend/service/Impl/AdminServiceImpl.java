@@ -88,6 +88,7 @@ public class AdminServiceImpl implements AdminService {
                 .companyName(job.getCompanyName())
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())
+                .recruiterName(job.getUser() != null ? job.getUser().getName() : null)
                 .recruiter(
                         job.getUser() != null
                                 ? RecruiterDto.builder()
@@ -156,7 +157,8 @@ public class AdminServiceImpl implements AdminService {
 
         return days.stream()
                 .map(day -> {
-                    long count = activityMap.getOrDefault(day.toLowerCase(), 0L);
+                    // DB returns 3-char short names (Mon, Tue, etc.)
+                    long count = activityMap.getOrDefault(day.substring(0, 3).toLowerCase(), 0L);
                     return new UserActivityDto(day.substring(0, 3), count);
                 })
                 .toList();
@@ -250,6 +252,7 @@ public class AdminServiceImpl implements AdminService {
                 .companyName(job.getCompanyName())
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())
+                .recruiterName(job.getUser() != null ? job.getUser().getName() : null)
                 .recruiter(
                         job.getUser() != null
                                 ? RecruiterDto.builder()
@@ -259,6 +262,35 @@ public class AdminServiceImpl implements AdminService {
                                 : null
                 )
                 .build());
+    }
+
+    @Override
+    public JobResponseDto getJobDetails(UUID id) {
+        Job job = jobRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Job", "id", id.toString()));
+        return JobResponseDto.builder()
+                .id(job.getId())
+                .title(job.getTitle())
+                .description(job.getDescription())
+                .requiredSkills(job.getRequiredSkills())
+                .location(job.getLocation())
+                .salary(job.getSalary())
+                .type(job.getType())
+                .experience(job.getExperience())
+                .remote(job.getRemote())
+                .isActive(job.getIsActive())
+                .companyName(job.getCompanyName())
+                .createdAt(job.getCreatedAt())
+                .updatedAt(job.getUpdatedAt())
+                .recruiterName(job.getUser() != null ? job.getUser().getName() : null)
+                .recruiter(
+                        job.getUser() != null
+                                ? RecruiterDto.builder()
+                                .name(job.getUser().getName())
+                                .email(job.getUser().getEmail())
+                                .build()
+                                : null
+                )
+                .build();
     }
 
     public String toggleJobStatus(UUID id) {

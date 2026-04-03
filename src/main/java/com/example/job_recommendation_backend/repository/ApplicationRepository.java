@@ -45,21 +45,23 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
                 j.companyName,
                 a.status,
                 a.fitScore,
-                a.createdAt
+                a.createdAt,
+                ju.name
             )
             FROM Application a
             JOIN a.user u
             JOIN a.job j
+            JOIN j.user ju
             WHERE a.deletedAt IS NULL
             """)
     Page<ApplicationResponseDto> findAllApplications(Pageable pageable);
 
-    @EntityGraph(attributePaths = {"user", "job"})
+    @EntityGraph(attributePaths = {"user", "job", "job.user"})
     @Query("SELECT ap FROM Application ap JOIN ap.job j WHERE j.user.id = :userId")
     Page<Application> findActiveApplicationsForRecruiter(@Param("userId") UUID userId, Pageable pageable);
 
 
-    @EntityGraph(attributePaths = {"user", "job"})
+    @EntityGraph(attributePaths = {"user", "job", "job.user"})
     @Query("select ap from Application ap join ap.user u where u.id = :userId")
     Page<Application> findActiveApplicationsForStudent(@Param("userId") UUID userId, Pageable pageable);
 
@@ -82,9 +84,9 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
 
     @Query("""
                 SELECT new com.example.job_recommendation_backend.DTO.JobAnalyticsDto(
-                    j.id, j.title, COUNT(a)
+                    j.id, j.title, COUNT(a.id)
                 )
-                FROM Job j LEFT JOIN Application a ON a.job.id = j.id
+                FROM Job j LEFT JOIN j.applications a
                 WHERE j.user.id = :userId
                 GROUP BY j.id, j.title
             """)
@@ -94,6 +96,7 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
                 SELECT a FROM Application a
                 JOIN FETCH a.user u
                 JOIN FETCH a.job j
+                JOIN FETCH j.user ju
                 WHERE j.id = :jobId
             """)
     Page<Application> findApplicantsByJobId(UUID jobId, Pageable pageable);
@@ -102,6 +105,7 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
                 SELECT a FROM Application a
                 JOIN FETCH a.user u
                 JOIN FETCH a.job j
+                JOIN FETCH j.user ju
                 WHERE j.user.id = :recruiterId
             """)
     Page<Application> findAllByRecruiter(UUID recruiterId,Pageable pageable);
