@@ -57,7 +57,7 @@ public class JobController {
     // Todo : do not return job directly make dto
     @PreAuthorize("hasRole('RECRUITER')")
     @GetMapping("/my-jobs")
-    public ResponseEntity<Page<Job>> getMyJobs(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Page<JobResponseDto>> getMyJobs(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = getPageable(page, size);
         return ResponseEntity.ok(jobService.getJobsByRecruiter(getUserId(),pageable));
     }

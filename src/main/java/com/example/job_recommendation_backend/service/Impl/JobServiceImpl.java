@@ -20,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.job_recommendation_backend.exception.CustomApiException;
 import com.example.job_recommendation_backend.exception.ResourceNotFoundException;
@@ -44,11 +45,13 @@ public class JobServiceImpl implements JobService {
     private ApplicationRepository applicationRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public Page<Job> getAllActiveJobs(Pageable pageable) {
         return jobRepository.findByIsActiveTrueAndDeletedAtIsNull(pageable);
     }
 
     @Override
+    @Transactional
     public Job createJob(CreateJobRequestDto request, UUID userId){
         Role role= UserContext.get().getRole();
         if(role != Role.recruiter){
@@ -74,16 +77,18 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
-    public Page<Job> getJobsByRecruiter(UUID userId,Pageable pageable) {
-
+    @Transactional(readOnly = true)
+    public Page<JobResponseDto> getJobsByRecruiter(UUID userId,Pageable pageable) {
         Role role=UserContext.get().getRole();
         if(role != Role.recruiter){
             throw new CustomApiException(HttpStatus.FORBIDDEN, "Only recruiters are allowed to perform this action");
         }
-        return jobRepository.findByRecruiterId(userId,pageable);
+        Page<Job> jobs = jobRepository.findByRecruiterId(userId,pageable);
+        return jobs.map(this::mapJobToResponseDto);
     }
 
     @Override
+    @Transactional
     public void deleteJob(UUID jobId, UUID userId) {
         Role role=UserContext.get().getRole();
 
@@ -99,6 +104,7 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ApplicationResponseDto> getUserApplications(UUID userId) {
 
         List<Application> applications =
@@ -111,6 +117,7 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public JobResponseDto getJobById(UUID jobId){
 
         Job job = jobRepository.findById(jobId).orElseThrow(()-> new ResourceNotFoundException("Job", "id", jobId.toString()));
