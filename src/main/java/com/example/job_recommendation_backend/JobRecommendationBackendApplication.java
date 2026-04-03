@@ -12,6 +12,7 @@ import io.github.cdimascio.dotenv.Dotenv;
 public class JobRecommendationBackendApplication {
 
 	public static void main(String[] args) {
+		System.out.println("Starting JobRecommendationBackendApplication JVM...");
 		Dotenv dotenv = Dotenv.configure()
 				.directory("./")
 				.ignoreIfMissing()
