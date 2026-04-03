@@ -1,7 +1,6 @@
 package com.example.job_recommendation_backend.controller;
 
 import com.example.job_recommendation_backend.DTO.*;
-import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.RecruiterService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +29,11 @@ public class RecruiterController {
         return ResponseEntity.ok(recruiterService.getAnalytics(getUserId() ));
     }
 
+    @GetMapping("/skill-gap")
+    public ResponseEntity<SkillGapDto> getGlobalSkillGap() {
+        return ResponseEntity.ok(recruiterService.getGlobalSkillGap(getUserId()));
+    }
+
     @GetMapping("/jobs/{jobId}/skill-gap")
     public ResponseEntity<SkillGapDto>skillGapAnalysis(@PathVariable UUID jobId,
                                                        @RequestParam(defaultValue = "0") int page,
@@ -48,7 +52,7 @@ public class RecruiterController {
 
     // Todo : have to change this return type to dto do not return entity directly
     @PutMapping("/jobs/{jobId}")
-    public ResponseEntity<Job> updateJob(@PathVariable UUID jobId, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<JobResponseDto> updateJob(@PathVariable UUID jobId, @RequestBody Map<String, Object> body) {
         return ResponseEntity.ok(recruiterService.updateJob(jobId, getUserId() , body));
     }
 

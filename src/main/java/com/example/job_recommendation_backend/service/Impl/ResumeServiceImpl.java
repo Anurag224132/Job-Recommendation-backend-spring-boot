@@ -20,6 +20,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
 import java.nio.file.*;
@@ -27,6 +28,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class ResumeServiceImpl implements ResumeService {
 
     @Autowired
@@ -83,8 +85,9 @@ public class ResumeServiceImpl implements ResumeService {
             );
 
             Map<String, Object> mlData = response.getBody();
+            log.info("📄 ML Resume Parse Result: {}", mlData);
 
-            if (userId != null && mlData != null && mlData.get("skills") != null) {
+            if (userId != null && mlData != null) {
 
                 User user = userRepository.findById(userId)
                         .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
@@ -101,12 +104,17 @@ public class ResumeServiceImpl implements ResumeService {
                     List<String> skills = ((List<?>) skillsObj).stream()
                             .map(Object::toString)
                             .map(s -> s.toLowerCase().trim())
+                            .filter(s -> !s.isEmpty())
                             .collect(Collectors.toList());
 
+                    log.info("✅ Extracted {} skills for user {}: {}", skills.size(), user.getEmail(), skills);
                     user.setSkills(skills);
+                } else {
+                    log.warn("⚠️ No skills list found in ML response for user {}", user.getEmail());
                 }
 
                 userRepository.save(user);
+                log.info("💾 User profile updated successfully with new resume and skills");
             }
 
             return mlData;

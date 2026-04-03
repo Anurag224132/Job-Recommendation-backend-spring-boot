@@ -58,7 +58,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getPlatformMetrics());
     }
 
-    @GetMapping("/analytics")
+    @GetMapping("/analyticsCard")
     public ResponseEntity<AnalyticsCardDto> getAnalyticsCard(@RequestParam(defaultValue = "all") String range) {
         return ResponseEntity.ok(adminService.getAnalyticsCard(range));
     }
@@ -115,6 +115,11 @@ public class AdminController {
     public ResponseEntity<ApiResponseDto> deleteInterview(@PathVariable UUID id) {
         String message = adminService.deleteInterview(id);
         return ResponseEntity.ok(new ApiResponseDto(message, true));
+    }
+
+    @GetMapping("/jobs/{id}/details")
+    public ResponseEntity<JobResponseDto> getJobDetails(@PathVariable UUID id) {
+        return ResponseEntity.ok(adminService.getJobDetails(id));
     }
 }
 

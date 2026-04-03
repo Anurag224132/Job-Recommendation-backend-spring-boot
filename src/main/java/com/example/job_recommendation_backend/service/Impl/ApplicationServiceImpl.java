@@ -15,7 +15,6 @@ import com.example.job_recommendation_backend.service.EmailService;
 import com.example.job_recommendation_backend.service.GoogleCalendarService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -27,15 +26,15 @@ import com.example.job_recommendation_backend.exception.CustomApiException;
 import com.example.job_recommendation_backend.exception.ResourceNotFoundException;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -64,6 +63,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
 
+    @Override
     public long calculateFitScore(CalculateFitScoreDto req) {
         Job job = jobRepository.findById(req.getJobId())
                 .orElseThrow(() -> new ResourceNotFoundException("Job", "id", req.getJobId().toString()));
@@ -82,9 +82,42 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .collect(Collectors.toSet())
                 : new HashSet<>();
 
-        resumeSkills.retainAll(requiredSkills);
+        Set<String> commonSkills = new HashSet<>(resumeSkills);
+        commonSkills.retainAll(requiredSkills);
 
-        return Math.round(((double) resumeSkills.size() / requiredSkills.size()) * 100);
+        return Math.round(((double) commonSkills.size() / requiredSkills.size()) * 100);
+    }
+
+    @Override
+    public Map<UUID, Long> calculateFitScores(CalculateFitScoreBatchRequestDto req) {
+        List<Job> jobs = jobRepository.findAllById(req.getJobIds());
+        Map<UUID, Long> scores = new HashMap<>();
+
+        Set<String> resumeSkills = (req.getResumeSkills() != null)
+                ? req.getResumeSkills().stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet())
+                : new HashSet<>();
+
+        for (Job job : jobs) {
+            Set<String> requiredSkills = (job.getRequiredSkills() != null)
+                    ? job.getRequiredSkills().stream()
+                    .map(String::toLowerCase)
+                    .collect(Collectors.toSet())
+                    : new HashSet<>();
+
+            if (requiredSkills.isEmpty()) {
+                scores.put(job.getId(), 0L);
+                continue;
+            }
+
+            Set<String> commonSkills = new HashSet<>(resumeSkills);
+            commonSkills.retainAll(requiredSkills);
+
+            long score = Math.round(((double) commonSkills.size() / requiredSkills.size()) * 100);
+            scores.put(job.getId(), score);
+        }
+        return scores;
     }
 
     public ApplicationResponseDto createApplication(CreateApplicationRequestDto request){
@@ -105,7 +138,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         long fitScore = calculateFitScore(
                 CalculateFitScoreDto.builder()
                         .jobId(request.getJobId())
-                        .resumeSkills(request.getResumeSkills())
+                        .resumeSkills(user.getSkills())
                         .build()
         );
 
@@ -226,8 +259,37 @@ public class ApplicationServiceImpl implements ApplicationService {
                         application.getJob() != null ? application.getJob().getTitle() : null
                 )
                 .status(status)
-                .fitScore(application.getFitScore())
+                .fitScore(application.getFitScore() != null ? application.getFitScore().toString() : null)
                 .createdAt(application.getCreatedAt())
+                .recruiterName(application.getJob() != null && application.getJob().getUser() != null ? application.getJob().getUser().getName() : null)
+                .job(mapJobToResponseDto(application.getJob()))
+                .build();
+    }
+
+    private JobResponseDto mapJobToResponseDto(Job job) {
+        if (job == null) return null;
+
+        RecruiterDto recruiter = job.getUser() == null ? null :
+                RecruiterDto.builder()
+                        .name(job.getUser().getName())
+                        .email(job.getUser().getEmail())
+                        .build();
+
+        return JobResponseDto.builder()
+                .id(job.getId())
+                .title(job.getTitle())
+                .description(job.getDescription())
+                .requiredSkills(job.getRequiredSkills())
+                .location(job.getLocation())
+                .salary(job.getSalary())
+                .type(job.getType())
+                .experience(job.getExperience())
+                .remote(job.getRemote())
+                .isActive(job.getIsActive())
+                .companyName(job.getCompanyName())
+                .createdAt(job.getCreatedAt())
+                .updatedAt(job.getUpdatedAt())
+                .recruiter(recruiter)
                 .build();
     }
 
@@ -237,9 +299,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Application", "id", applicationId.toString()));
 
-
         UUID currentUserId = UserContext.get().getUserId();
-        Role role = UserContext.get().getRole();
 
         boolean isOwner = application.getUser().getId().equals(currentUserId);
         boolean isRecruiter = application.getJob().getUser().getId().equals(currentUserId);
@@ -248,22 +308,29 @@ public class ApplicationServiceImpl implements ApplicationService {
             throw new CustomApiException(HttpStatus.FORBIDDEN, "You are not allowed to download this resume");
         }
 
+        Path uploadDir = Paths.get("uploads", "resumes").toAbsolutePath().normalize();
+        
+        // 1. Try application-specific resume path
         String resumeFilename = application.getResumePath();
+        Path filePath = (resumeFilename != null && !resumeFilename.isBlank()) 
+                ? uploadDir.resolve(resumeFilename).normalize() 
+                : null;
 
-        if (resumeFilename == null || resumeFilename.isBlank()) {
-            throw new CustomApiException(HttpStatus.NOT_FOUND, "Resume not available");
+        // 2. Fallback to user's current resume if original is missing or file doesn't exist
+        if (filePath == null || !Files.exists(filePath)) {
+            log.info("Original resume file {} missing, falling back to student's current resume", resumeFilename);
+            resumeFilename = application.getUser().getResumePath();
+            filePath = (resumeFilename != null && !resumeFilename.isBlank()) 
+                    ? uploadDir.resolve(resumeFilename).normalize() 
+                    : null;
         }
 
-        Path uploadDir = Paths.get("uploads", "resumes").toAbsolutePath().normalize();
-        Path filePath = uploadDir.resolve(resumeFilename).normalize();
-
+        if (filePath == null || !Files.exists(filePath)) {
+            throw new CustomApiException(HttpStatus.NOT_FOUND, "Resume file not found on server");
+        }
 
         if (!filePath.startsWith(uploadDir)) {
             throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file path");
-        }
-
-        if (!Files.exists(filePath)) {
-            throw new CustomApiException(HttpStatus.NOT_FOUND, "Resume file not found on server");
         }
 
         try {
@@ -274,37 +341,38 @@ public class ApplicationServiceImpl implements ApplicationService {
             }
 
             String ext = getFileExtension(resumeFilename);
-
-            String cleanedName = application.getUser().getName()
-                    .replaceAll("\\s+", "_") + "_Resume" + ext;
+            String cleanedName = (application.getUser() != null ? application.getUser().getName() : "Candidate")
+                    .replaceAll("[^a-zA-Z0-9.-]", "_") + "_Resume" + ext;
 
             return new RenamedResource(resource, cleanedName);
 
-        } catch (MalformedURLException e) {
+        } catch (IOException e) {
             throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error while reading file");
         }
     }
 
-    public class RenamedResource extends InputStreamResource {
-
+    public static class RenamedResource extends UrlResource {
         private final String filename;
+        private final long length;
 
-        public RenamedResource(Resource resource, String filename) {
-            super(getSafeStream(resource));
+        public RenamedResource(Resource resource, String filename) throws IOException {
+            super(resource.getURI());
             this.filename = filename;
-        }
-
-        private static InputStream getSafeStream(Resource resource) {
+            long len = -1;
             try {
-                return resource.getInputStream();
-            } catch (IOException e) {
-                throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error reading file");
-            }
+                len = resource.contentLength();
+            } catch (IOException ignored) {}
+            this.length = len;
         }
 
         @Override
         public String getFilename() {
             return filename;
+        }
+
+        @Override
+        public long contentLength() throws IOException {
+            return length != -1 ? length : super.contentLength();
         }
     }
 

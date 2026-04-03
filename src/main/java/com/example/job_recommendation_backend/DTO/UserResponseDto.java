@@ -18,6 +18,10 @@ public class UserResponseDto {
     private String name;
     private String email;
     private Role role;
+    private java.util.List<String> skills;
+    private String resumePath;
+    private String profilePicture;
+    private String bio;
 
     public static UserResponseDto fromEntity(User user) {
         return UserResponseDto.builder()
@@ -25,6 +29,18 @@ public class UserResponseDto {
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
+                .skills(user.getSkills())
+                .resumePath(user.getResumePath())
+                .profilePicture(user.getProfilePicture())
+                .bio(user.getBio())
                 .build();
+    }
+
+    // Required for JPA constructor projection in UserRepository
+    public UserResponseDto(UUID id, String name, String email, Role role) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.role = role;
     }
 }

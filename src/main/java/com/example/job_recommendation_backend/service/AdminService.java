@@ -36,4 +36,6 @@ public interface AdminService {
     String deleteApplication(UUID id);
 
     String deleteInterview(UUID id);
+
+    JobResponseDto getJobDetails(UUID id);
 }

@@ -36,8 +36,14 @@ public class JobController {
             @RequestParam(defaultValue = "10") int size) {
 
         Pageable pageable = getPageable(page, size);
-        
+
         return ResponseEntity.ok(jobService.searchJobs(q, location, remote, type, experience, skills, pageable));
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<Job>> getJobs(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = getPageable(page, size);
+        return ResponseEntity.ok(jobService.getAllActiveJobs(pageable));
     }
 
     // Todo : do not return job directly make dto
@@ -56,7 +62,7 @@ public class JobController {
         return ResponseEntity.ok(jobService.getJobsByRecruiter(getUserId(),pageable));
     }
 
-    @PreAuthorize("hasRole('RECRUITER')")
+    @PreAuthorize("hasAnyRole('RECRUITER', 'ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteJob(@PathVariable UUID id) {
         jobService.deleteJob(id, getUserId());

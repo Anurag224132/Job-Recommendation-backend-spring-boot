@@ -1,15 +1,13 @@
 package com.example.job_recommendation_backend.service.Impl;
 
-import com.example.job_recommendation_backend.DTO.ApplicantDto;
-import com.example.job_recommendation_backend.DTO.JobAnalyticsDto;
-import com.example.job_recommendation_backend.DTO.RecruiterDashboardDto;
-import com.example.job_recommendation_backend.DTO.SkillGapDto;
+import com.example.job_recommendation_backend.DTO.*;
 import com.example.job_recommendation_backend.entity.Application;
 import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.repository.ApplicationRepository;
 import com.example.job_recommendation_backend.repository.JobRepository;
 import com.example.job_recommendation_backend.service.RecruiterService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Page;
@@ -17,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import com.example.job_recommendation_backend.exception.CustomApiException;
@@ -32,6 +31,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class RecruiterServiceImpl implements RecruiterService {
 
     @Autowired
@@ -104,34 +104,83 @@ public class RecruiterServiceImpl implements RecruiterService {
     }
 
     @Override
-    public Job updateJob(UUID jobId, UUID userId, Map<String, Object> body) {
-
+    public JobResponseDto updateJob(UUID jobId, UUID userId, Map<String, Object> body) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
 
         if (!job.getUser().getId().equals(userId)) {
-            throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized");
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized to update this job");
         }
 
         if (body.get("title") != null)
-            job.setTitle((String) body.get("title"));
+            job.setTitle(String.valueOf(body.get("title")));
 
         if (body.get("description") != null)
-            job.setDescription((String) body.get("description"));
+            job.setDescription(String.valueOf(body.get("description")));
 
-        if (body.get("requiredSkills") != null){
+        if (body.get("location") != null)
+            job.setLocation(String.valueOf(body.get("location")));
+
+        if (body.get("salary") != null)
+            job.setSalary(String.valueOf(body.get("salary")));
+
+        if (body.get("type") != null)
+            job.setType(String.valueOf(body.get("type")));
+
+        if (body.get("experience") != null)
+            job.setExperience(String.valueOf(body.get("experience")));
+
+        if (body.get("remote") != null) {
+            Object remote = body.get("remote");
+            job.setRemote(remote instanceof Boolean ? (Boolean) remote : Boolean.parseBoolean(remote.toString()));
+        }
+
+        if (body.get("isActive") != null) {
+            Object active = body.get("isActive");
+            job.setIsActive(active instanceof Boolean ? (Boolean) active : Boolean.parseBoolean(active.toString()));
+        }
+
+        if (body.get("companyName") != null)
+            job.setCompanyName(String.valueOf(body.get("companyName")));
+
+        if (body.get("requiredSkills") != null) {
             Object skillsObj = body.get("requiredSkills");
-
             if (skillsObj instanceof List<?>) {
                 List<String> skills = ((List<?>) skillsObj)
                         .stream()
                         .map(Object::toString)
-                        .toList();
+                        .collect(Collectors.toList());
                 job.setRequiredSkills(skills);
             }
         }
 
-        return jobRepository.save(job);
+        job = jobRepository.save(job);
+        return mapJobToResponseDto(job);
+    }
+
+    private JobResponseDto mapJobToResponseDto(Job job) {
+        RecruiterDto recruiter = job.getUser() == null ? null :
+                RecruiterDto.builder()
+                        .name(job.getUser().getName())
+                        .email(job.getUser().getEmail())
+                        .build();
+
+        return JobResponseDto.builder()
+                .id(job.getId())
+                .title(job.getTitle())
+                .description(job.getDescription())
+                .requiredSkills(job.getRequiredSkills())
+                .location(job.getLocation())
+                .salary(job.getSalary())
+                .type(job.getType())
+                .experience(job.getExperience())
+                .remote(job.getRemote())
+                .isActive(job.getIsActive())
+                .companyName(job.getCompanyName())
+                .createdAt(job.getCreatedAt())
+                .updatedAt(job.getUpdatedAt())
+                .recruiter(recruiter)
+                .build();
     }
 
     @Override
@@ -185,6 +234,36 @@ public class RecruiterServiceImpl implements RecruiterService {
         } catch (Exception e) {
             throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error downloading resume");
         }
+    }
+
+    @Override
+    public SkillGapDto getGlobalSkillGap(UUID userId) {
+        // Fetch ALL jobs for this recruiter
+        Page<Job> jobs = jobRepository.findByRecruiterId(userId, PageRequest.of(0, Integer.MAX_VALUE));
+        
+        Set<String> allRequiredSkills = jobs.stream()
+                .filter(j -> j.getRequiredSkills() != null)
+                .flatMap(j -> j.getRequiredSkills().stream())
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+
+        // Fetch ALL applications for this recruiter
+        Page<Application> apps = applicationRepository.findAllByRecruiter(userId, PageRequest.of(0, Integer.MAX_VALUE));
+        
+        Set<String> applicantSkills = apps.stream()
+                .filter(a -> a.getUser().getSkills() != null)
+                .flatMap(a -> a.getUser().getSkills().stream())
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+
+        List<String> gaps = allRequiredSkills.stream()
+                .filter(skill -> !applicantSkills.contains(skill))
+                .distinct()
+                .collect(Collectors.toList());
+
+        return new SkillGapDto(gaps);
     }
 
     @Override
