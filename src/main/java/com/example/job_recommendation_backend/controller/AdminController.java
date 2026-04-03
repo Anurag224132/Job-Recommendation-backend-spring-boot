@@ -34,8 +34,8 @@ public class AdminController {
     }
 
     @PatchMapping("/users/{id}/role")
-    public ResponseEntity<ApiResponseDto> changeRole(@PathVariable UUID id, @RequestParam Role role) {
-        String message = adminService.changeRole(id, role);
+    public ResponseEntity<ApiResponseDto> changeRole(@PathVariable UUID id, @RequestBody UpdateRoleRequestDto request) {
+        String message = adminService.changeRole(id, request.getRole());
         return ResponseEntity.ok(new ApiResponseDto(message, true));
     }
 
