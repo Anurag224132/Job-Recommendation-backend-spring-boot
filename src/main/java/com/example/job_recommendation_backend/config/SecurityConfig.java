@@ -57,14 +57,11 @@ public class SecurityConfig {
         @Bean
         CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration configuration = new CorsConfiguration();
-                configuration.setAllowedOrigins(Arrays.asList(
+                configuration.setAllowedOriginPatterns(Arrays.asList(
                                 "http://localhost:3000",
                                 "http://localhost:3001",
-                                "http://localhost:5000",
-                                "http://localhost:5173",
-                                "http://localhost:5174",
-                                "http://127.0.0.1:5173",
-                                "http://127.0.0.1:5174"
+                                "https://*.vercel.app",
+                                "https://job-recommendation-frontend.vercel.app"
                 ));
                 configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
                 configuration.setAllowedHeaders(List.of("*"));

@@ -57,6 +57,9 @@ public class ResumeServiceImpl implements ResumeService {
             validateFile(file);
 
             String originalName = file.getOriginalFilename();
+            if (originalName == null) {
+                throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file name");
+            }
             String sanitized = originalName.replaceAll("[^a-zA-Z0-9_.-]", "_");
             String filename = System.currentTimeMillis() + "-" + sanitized;
 
@@ -75,17 +78,25 @@ public class ResumeServiceImpl implements ResumeService {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
-            HttpEntity<MultiValueMap<String, Object>> request =
-                    new HttpEntity<>(body, headers);
+            HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
 
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    mlApiUrl + "/parse_resume",
-                    request,
-                    Map.class
-            );
-
-            Map<String, Object> mlData = response.getBody();
-            log.info("📄 ML Resume Parse Result: {}", mlData);
+            Map<String, Object> mlData = new HashMap<>();
+            
+            if (mlApiUrl != null && !mlApiUrl.isEmpty()) {
+                try {
+                    ResponseEntity<Map> response = restTemplate.postForEntity(
+                            mlApiUrl + "/parse_resume",
+                            request,
+                            Map.class
+                    );
+                    mlData = response.getBody();
+                    log.info("📄 ML Resume Parse Result: {}", mlData);
+                } catch (Exception e) {
+                    log.warn("⚠️ ML Resume Parsing failed: {}. Continuing with file upload only.", e.getMessage());
+                }
+            } else {
+                log.info("ℹ️ ML API URL not provided, skipping resume parsing.");
+            }
 
             if (userId != null && mlData != null) {
 
@@ -178,7 +189,8 @@ public class ResumeServiceImpl implements ResumeService {
                 throw new CustomApiException(HttpStatus.NOT_FOUND, "User skills not found");
             }
 
-            // TODO : have to think again about this query this would be slow query in big db
+            // TODO : have to think again about this query this would be slow query in big
+            // db
             List<Job> jobs = jobRepository.findAll();
 
             List<Map<String, Object>> jobList = jobs.stream().map(job -> {
@@ -196,17 +208,28 @@ public class ResumeServiceImpl implements ResumeService {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            HttpEntity<Map<String, Object>> request =
-                    new HttpEntity<>(payload, headers);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    mlApiUrl + "/match_jobs",
-                    request,
-                    Map.class
-            );
+            if (mlApiUrl == null || mlApiUrl.isEmpty()) {
+                log.warn("ℹ️ ML API URL not provided, cannot recommend jobs via ML.");
+                Map<String, Object> fallbackData = new HashMap<>();
+                fallbackData.put("matches", new ArrayList<>());
+                return fallbackData;
+            }
 
-            return response.getBody();
+            try {
+                ResponseEntity<Map> response = restTemplate.postForEntity(
+                        mlApiUrl + "/match_jobs",
+                        request,
+                        Map.class);
 
+                return response.getBody();
+            } catch (Exception err) {
+                log.warn("⚠️ ML Job Recommendation failed: {}. Returning empty matches.", err.getMessage());
+                Map<String, Object> fallbackData = new HashMap<>();
+                fallbackData.put("matches", new ArrayList<>());
+                return fallbackData;
+            }
         } catch (Exception err) {
             throw handleError(err, "job recommendation");
         }
@@ -233,7 +256,8 @@ public class ResumeServiceImpl implements ResumeService {
         List<String> allowed = List.of(".pdf", ".doc", ".docx", ".txt");
 
         if (!allowed.contains(ext)) {
-            throw new CustomApiException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Only PDF, DOC, DOCX and TXT files are allowed");
+            throw new CustomApiException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                    "Only PDF, DOC, DOCX and TXT files are allowed");
         }
     }
 
@@ -242,7 +266,8 @@ public class ResumeServiceImpl implements ResumeService {
         System.err.println("❌ " + context + " error: " + err.getMessage());
 
         if (err instanceof org.springframework.web.client.HttpStatusCodeException ex) {
-            return new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Request failed (API error): " + ex.getResponseBodyAsString());
+            return new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Request failed (API error): " + ex.getResponseBodyAsString());
         } else if (err instanceof org.springframework.web.client.ResourceAccessException) {
             return new CustomApiException(HttpStatus.SERVICE_UNAVAILABLE, "No response from service");
         } else {
