@@ -42,10 +42,6 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers("/api/auth/**")
                                                 .permitAll()
-                                                .requestMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
-                                                .requestMatchers(HttpMethod.POST, "/api/applications/calculate-fit",
-                                                                "/api/applications/calculate-fit-batch")
-                                                .permitAll()
                                                 .anyRequest().authenticated())
                                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterAfter(userContextFilter, JwtFilter.class);
@@ -58,9 +54,7 @@ public class SecurityConfig {
                 CorsConfiguration configuration = new CorsConfiguration();
                 configuration.setAllowedOriginPatterns(Arrays.asList(
                                 "http://localhost:3000",
-                                "http://localhost:3001",
-                                "https://*.vercel.app",
-                                "https://job-recommendation-frontend.vercel.app"
+                                "https://*.vercel.app"
                 ));
                 configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
                 configuration.setAllowedHeaders(List.of("*"));
