@@ -1,5 +1,6 @@
 package com.example.job_recommendation_backend.security;
 
+import com.example.job_recommendation_backend.enums.Role;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -16,6 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.UUID;
 
 @Component
 @Slf4j
@@ -40,7 +42,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
                 // Safe Redis Check
                 try {
-                    if (Boolean.TRUE.equals(redisTemplate.hasKey("BLACKLIST:TOKEN:" + token))) {
+                    if (redisTemplate.hasKey("BLACKLIST:TOKEN:" + token)) {
                         response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token logged out");
                         return;
                     }
@@ -51,6 +53,11 @@ public class JwtFilter extends OncePerRequestFilter {
                 Claims claims = jwtUtil.getClaims(token);
                 String email = claims.getSubject();
                 String role = claims.get("role", String.class);
+
+                // Populate UserContext
+                UUID userId = UUID.fromString(claims.get("id").toString());
+                Role roleEnum = Role.valueOf(role);
+                UserContext.set(userId, token, roleEnum);
 
                 // Diagnostic Log
                 log.info("Auth Filter: User={}, Role={}", email, role);
@@ -78,6 +85,10 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-        chain.doFilter(request, response);
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            UserContext.clear();
+        }
     }
 }

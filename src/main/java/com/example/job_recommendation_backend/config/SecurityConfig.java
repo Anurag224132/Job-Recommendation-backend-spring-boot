@@ -1,8 +1,6 @@
 package com.example.job_recommendation_backend.config;
 
-import org.springframework.http.HttpMethod;
 import com.example.job_recommendation_backend.security.JwtFilter;
-import com.example.job_recommendation_backend.security.UserContextFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,9 +28,6 @@ public class SecurityConfig {
         @Autowired
         private JwtFilter jwtFilter;
 
-        @Autowired
-        private UserContextFilter userContextFilter;
-
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
@@ -43,8 +38,7 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/auth/**")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
-                                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                                .addFilterAfter(userContextFilter, JwtFilter.class);
+                                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
                 return http.build();
         }
