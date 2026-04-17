@@ -108,7 +108,7 @@ public class JobServiceImpl implements JobService {
     public List<ApplicationResponseDto> getUserApplications(UUID userId) {
 
         List<Application> applications =
-                applicationRepository.findByUserIdWithJobAndUser(userId);
+                applicationRepository.findByUserId(userId);
 
         return applications.stream()
                 .filter(app -> app.getJob() != null) // safety check
