@@ -41,14 +41,15 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
     RecruiterAnalytics getRecruiterAnalytics(@Param("userId") UUID userId);
 
     @EntityGraph(attributePaths = {"user"})
-    @Query("SELECT j FROM Job j")
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL")
     Page<Job> findAllWithUser(Pageable pageable);
 
     @EntityGraph(attributePaths = {"user"})
     @Query("""
                 SELECT j FROM Job j
-                WHERE LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
-                   OR LOWER(j.companyName) LIKE LOWER(CONCAT('%', :query, '%'))
+                WHERE j.deletedAt IS NULL AND (
+                   LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
+                   OR LOWER(j.companyName) LIKE LOWER(CONCAT('%', :query, '%')))
             """)
     Page<Job> searchJobsWithUser(@Param("query") String query, Pageable pageable);
 
@@ -60,7 +61,7 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
     @Modifying
     @Transactional
     @Query("UPDATE Job j SET j.deletedAt = CURRENT_TIMESTAMP WHERE j.user.id = :userId")
-    void softDeleteJobsByUser(@Param("userId") UUID userId);
+    int softDeleteJobsByUser(@Param("userId") UUID userId);
 
     Page<Job> findByIsActiveTrueAndDeletedAtIsNull(Pageable pageable);
 
