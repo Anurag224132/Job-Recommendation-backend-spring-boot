@@ -1,7 +1,6 @@
 package com.example.job_recommendation_backend.controller;
 
 import com.example.job_recommendation_backend.DTO.*;
-import com.example.job_recommendation_backend.enums.Role;
 import com.example.job_recommendation_backend.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
