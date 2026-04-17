@@ -23,7 +23,6 @@ import com.example.job_recommendation_backend.exception.ResourceNotFoundExceptio
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
