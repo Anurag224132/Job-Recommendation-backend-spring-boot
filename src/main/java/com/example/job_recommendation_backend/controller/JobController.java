@@ -3,10 +3,12 @@ package com.example.job_recommendation_backend.controller;
 import com.example.job_recommendation_backend.DTO.CreateJobRequestDto;
 import com.example.job_recommendation_backend.DTO.JobResponseDto;
 import com.example.job_recommendation_backend.entity.Job;
-import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.JobService;
+import com.example.job_recommendation_backend.utility.AuthUtil;
+import com.example.job_recommendation_backend.utility.PaginationUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +26,12 @@ public class JobController {
 
     private final JobService jobService;
 
+    @Autowired
+    private PaginationUtil paginationUtil;
+
+    @Autowired
+    private AuthUtil authUtil;
+
     @GetMapping("/search")
     public ResponseEntity<Page<JobResponseDto>> searchJobs(
             @RequestParam(required = false) String q,
@@ -35,14 +43,14 @@ public class JobController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        Pageable pageable = getPageable(page, size);
+        Pageable pageable = paginationUtil.getPageable(page, size);
 
         return ResponseEntity.ok(jobService.searchJobs(q, location, remote, type, experience, skills, pageable));
     }
 
     @GetMapping
     public ResponseEntity<Page<Job>> getJobs(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = getPageable(page, size);
+        Pageable pageable = paginationUtil.getPageable(page, size);
         return ResponseEntity.ok(jobService.getAllActiveJobs(pageable));
     }
 
@@ -50,7 +58,7 @@ public class JobController {
     @PreAuthorize("hasRole('RECRUITER')")
     @PostMapping
     public ResponseEntity<Job> createJob(@Valid @RequestBody CreateJobRequestDto request) {
-        return ResponseEntity.ok(jobService.createJob(request, getUserId()));
+        return ResponseEntity.ok(jobService.createJob(request, authUtil.getCurrentUserId()));
     }
 
 
@@ -58,14 +66,14 @@ public class JobController {
     @PreAuthorize("hasRole('RECRUITER')")
     @GetMapping("/my-jobs")
     public ResponseEntity<Page<JobResponseDto>> getMyJobs(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = getPageable(page, size);
-        return ResponseEntity.ok(jobService.getJobsByRecruiter(getUserId(),pageable));
+        Pageable pageable = paginationUtil.getPageable(page, size);
+        return ResponseEntity.ok(jobService.getJobsByRecruiter(authUtil.getCurrentUserId(),pageable));
     }
 
     @PreAuthorize("hasAnyRole('RECRUITER', 'ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteJob(@PathVariable UUID id) {
-        jobService.deleteJob(id, getUserId());
+        jobService.deleteJob(id, authUtil.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -74,12 +82,4 @@ public class JobController {
         return ResponseEntity.ok(jobService.getJobById(id));
     }
 
-    private Pageable getPageable(int page, int size) {
-        size = Math.min(size, 50);
-        return PageRequest.of(page, size, Sort.by("createdAt").descending());
-    }
-
-    private UUID getUserId() {
-        return UserContext.get().getUserId();
-    }
 }
