@@ -1,15 +1,12 @@
 package com.example.job_recommendation_backend.controller;
 
 import com.example.job_recommendation_backend.DTO.*;
-import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.RecruiterService;
 import com.example.job_recommendation_backend.utility.AuthUtil;
 import com.example.job_recommendation_backend.utility.PaginationUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;

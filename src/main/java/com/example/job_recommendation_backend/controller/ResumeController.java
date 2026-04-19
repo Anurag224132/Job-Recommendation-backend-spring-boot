@@ -1,6 +1,5 @@
 package com.example.job_recommendation_backend.controller;
 
-import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.ResumeService;
 import com.example.job_recommendation_backend.utility.AuthUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/resumes")
