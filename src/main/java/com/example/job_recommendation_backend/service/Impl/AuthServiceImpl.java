@@ -23,7 +23,6 @@ import com.example.job_recommendation_backend.exception.ResourceNotFoundExceptio
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
@@ -51,7 +50,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void initiateRegistration(RegisterUserDto registerUserDto) {
-        if (userRepository.findByEmail(registerUserDto.getEmail()).isPresent()) {
+        if (userRepository.findByEmailAndDeletedAtIsNull(registerUserDto.getEmail()).isPresent()) {
             throw new CustomApiException(HttpStatus.CONFLICT, "User with this email already exists");
         }
         sendAndStoreOtp(registerUserDto.getEmail(), registerUserDto.getName(), OTP_SIGNUP_PREFIX);
@@ -92,7 +91,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse login(LoginRequest loginRequest) {
-        User user = userRepository.findByEmail(loginRequest.getEmail())
+        User user = userRepository.findByEmailAndDeletedAtIsNull(loginRequest.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", loginRequest.getEmail()));
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
@@ -111,7 +110,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public UserResponseDto getCurrentUser(String email) {
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailAndDeletedAtIsNull(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
         return UserResponseDto.fromEntity(user);
     }
@@ -123,7 +122,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void initiateForgotPassword(String email) {
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailAndDeletedAtIsNull(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
 
         sendAndStoreOtp(email, user.getName(), OTP_FORGOT_PREFIX);
@@ -138,7 +137,7 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid or expired OTP");
         }
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailAndDeletedAtIsNull(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
 
         if (passwordEncoder.matches(newPassword, user.getPassword())) {

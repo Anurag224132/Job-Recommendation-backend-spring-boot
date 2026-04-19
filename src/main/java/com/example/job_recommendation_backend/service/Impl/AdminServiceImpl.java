@@ -63,7 +63,7 @@ public class AdminServiceImpl implements AdminService {
             return "Role is already " + role;
         }
         if (user.getRole() == Role.recruiter && role != Role.recruiter) {
-            jobRepository.softDeleteJobsByUser(id);
+            int dlt=jobRepository.softDeleteJobsByUser(id);
         }
 
         user.setRole(role);
