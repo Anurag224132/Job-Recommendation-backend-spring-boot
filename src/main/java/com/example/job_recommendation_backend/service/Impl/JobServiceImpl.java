@@ -8,10 +8,10 @@ import com.example.job_recommendation_backend.entity.Application;
 import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.enums.Role;
+import com.example.job_recommendation_backend.repository.ApplicationRepository;
 import com.example.job_recommendation_backend.repository.JobRepository;
 import com.example.job_recommendation_backend.repository.projection.RecruiterAnalytics;
 import com.example.job_recommendation_backend.security.UserContext;
-import com.example.job_recommendation_backend.service.ApplicationService;
 import com.example.job_recommendation_backend.service.JobService;
 import com.example.job_recommendation_backend.service.UserService;
 import jakarta.persistence.criteria.Predicate;
@@ -43,7 +43,7 @@ public class JobServiceImpl implements JobService {
     private UserService userService;
 
     @Autowired
-    private ApplicationService applicationService;
+    private ApplicationRepository applicationRepository;
 
     @Override
     public Page<JobResponseDto> getAllJobs(Pageable pageable) {
@@ -162,7 +162,7 @@ public class JobServiceImpl implements JobService {
     @Override
     public List<ApplicationResponseDto> getUserApplications(UUID userId) {
 
-        List<Application> applications = applicationService.getAllApplicationsByUserId(userId);
+        List<Application> applications = applicationRepository.findByUserId(userId);
 
         return applications.stream()
                 .filter(app -> app.getJob() != null) // safety check
