@@ -2,6 +2,7 @@ package com.example.job_recommendation_backend.controller;
 
 import com.example.job_recommendation_backend.DTO.*;
 import com.example.job_recommendation_backend.service.AdminService;
+import com.example.job_recommendation_backend.utility.AuthUtil;
 import com.example.job_recommendation_backend.utility.PaginationUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,9 @@ public class AdminController {
 
     @Autowired
     private PaginationUtil paginationUtil;
+
+    @Autowired
+    private AuthUtil authUtil;
 
 
 
@@ -54,7 +58,7 @@ public class AdminController {
 
     @DeleteMapping("/jobs/{id}")
     public ResponseEntity<ApiResponseDto> deleteJob(@PathVariable UUID id) {
-        String message = adminService.deleteJob(id);
+        String message = adminService.deleteJob(id,authUtil.getCurrentUserId());
         return ResponseEntity.ok(new ApiResponseDto(message, true));
     }
 
@@ -100,7 +104,7 @@ public class AdminController {
     @GetMapping("/applications")
     public ResponseEntity<Page<ApplicationResponseDto>> getAllApplications(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = paginationUtil.getPageable(page, size);
-        return ResponseEntity.ok(adminService.getAllApplications(pageable));
+        return ResponseEntity.ok(adminService.getAllApplications(authUtil.getCurrentUserId(),authUtil.getCurrentUserRole(),pageable));
     }
 
     @GetMapping("/interviews")
@@ -112,7 +116,7 @@ public class AdminController {
 
     @DeleteMapping("/applications/{id}")
     public ResponseEntity<ApiResponseDto> deleteApplication(@PathVariable UUID id) {
-        String message = adminService.deleteApplication(id);
+        String message = adminService.deleteApplication(id,authUtil.getCurrentUserRole(),authUtil.getCurrentUserId());
         return ResponseEntity.ok(new ApiResponseDto(message, true));
     }
 

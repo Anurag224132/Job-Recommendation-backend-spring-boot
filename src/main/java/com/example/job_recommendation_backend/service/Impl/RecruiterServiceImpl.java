@@ -6,6 +6,7 @@ import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.repository.ApplicationRepository;
 import com.example.job_recommendation_backend.repository.JobRepository;
+import com.example.job_recommendation_backend.service.JobService;
 import com.example.job_recommendation_backend.service.RecruiterService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,9 @@ public class RecruiterServiceImpl implements RecruiterService {
 
     @Autowired
     private ApplicationRepository applicationRepository;
+
+    @Autowired
+    private JobService jobService;
 
     private final String uploadDir = System.getProperty("user.dir") + "/uploads/resumes";
 
@@ -185,18 +189,8 @@ public class RecruiterServiceImpl implements RecruiterService {
 
     @Override
     public Map<String, Object> toggleJobActive(UUID jobId, UUID userId) {
-
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
-
-        if (!job.getUser().getId().equals(userId)) {
-            throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized");
-        }
-
-        job.setIsActive(!job.getIsActive());
-        jobRepository.save(job);
-
-        return Map.of("isActive", job.getIsActive());
+        boolean active = jobService.toggleJobStatus(jobId);
+        return Map.of("isActive", active);
     }
 
     @Override

@@ -47,9 +47,9 @@ public class JobController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<Job>> getJobs(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Page<JobResponseDto>> getJobs(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = paginationUtil.getPageable(page, size);
-        return ResponseEntity.ok(jobService.getAllActiveJobs(pageable));
+        return ResponseEntity.ok(jobService.getAllJobs(pageable));
     }
 
     // Todo : do not return job directly make dto

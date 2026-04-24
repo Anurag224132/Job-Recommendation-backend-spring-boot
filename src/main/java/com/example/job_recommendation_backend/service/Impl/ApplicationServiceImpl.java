@@ -9,6 +9,7 @@ import com.example.job_recommendation_backend.enums.Role;
 import com.example.job_recommendation_backend.repository.ApplicationRepository;
 import com.example.job_recommendation_backend.repository.JobRepository;
 import com.example.job_recommendation_backend.repository.UserRepository;
+import com.example.job_recommendation_backend.repository.projection.StudentAnalytics;
 import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.ApplicationService;
 import com.example.job_recommendation_backend.service.EmailService;
@@ -88,6 +89,9 @@ public class ApplicationServiceImpl implements ApplicationService {
         return Math.round(((double) commonSkills.size() / requiredSkills.size()) * 100);
     }
 
+    public StudentAnalytics getStudentAnalytics(UUID userId){
+        return  applicationRepository.getStudentAnalytics(userId);
+    }
     @Override
     public Map<UUID, Long> calculateFitScores(CalculateFitScoreBatchRequestDto req) {
         List<Job> jobs = jobRepository.findAllById(req.getJobIds());
@@ -168,6 +172,9 @@ public class ApplicationServiceImpl implements ApplicationService {
             return getAllApplicationsForRecruiter(userId, pageable);
         if(role == Role.student)
             return getAllApplicationsForStudent(userId, pageable);
+        if(role == Role.admin){
+            return applicationRepository.findAllApplications(pageable);
+        }
         throw new CustomApiException("Invalid role");
     }
 
@@ -184,10 +191,15 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     public String deleteApplication(UUID applicationId, Role role, UUID userId){
-        if(role != Role.recruiter){
-            throw new CustomApiException(HttpStatus.FORBIDDEN, "Only recruiter can delete");
+        if(role == Role.student){
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "You are not allowed to do this action");
         }
-        int updated = applicationRepository.softDeleteByRecruiter(applicationId, userId);
+        int updated =0;
+        if(role == Role.admin){
+            updated= applicationRepository.softDeleteByAdmin(applicationId);
+        }else{
+            updated = applicationRepository.softDeleteByRecruiter(applicationId, userId);
+        }
         if(updated == 0){
             throw new CustomApiException(HttpStatus.BAD_REQUEST, "Not allowed or application not found");
         }
@@ -293,7 +305,6 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .build();
     }
 
-
     public Resource downloadResume(UUID applicationId){
 
         Application application = applicationRepository.findById(applicationId)
@@ -380,7 +391,6 @@ public class ApplicationServiceImpl implements ApplicationService {
         int index = fileName.lastIndexOf(".");
         return (index != -1) ? fileName.substring(index) : "";
     }
-
 
     public ApplicationResponseDto scheduleInterview(UUID appId, LocalDateTime interviewDate) {
 

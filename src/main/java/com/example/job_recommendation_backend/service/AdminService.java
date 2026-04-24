@@ -15,7 +15,7 @@ public interface AdminService {
 
     Page<JobResponseDto> getAllJobs(Pageable pageable);
 
-    String deleteJob(UUID id);
+    String deleteJob(UUID id, UUID userId);
 
     PlatformMetricsDto getPlatformMetrics();
 
@@ -29,11 +29,11 @@ public interface AdminService {
 
     String toggleJobStatus(UUID id);
 
-    Page<ApplicationResponseDto> getAllApplications(Pageable pageable);
+    Page<ApplicationResponseDto> getAllApplications(UUID userId,Role role,Pageable pageable);
 
     Page<InterviewResponseDto> getAllInterviews(Pageable pageable);
 
-    String deleteApplication(UUID id);
+    String deleteApplication(UUID applicationId, Role role,UUID userId);
 
     String deleteInterview(UUID id);
 

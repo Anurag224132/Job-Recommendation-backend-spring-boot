@@ -45,13 +45,20 @@ public class JobServiceImpl implements JobService {
     private ApplicationRepository applicationRepository;
 
     @Override
-    @Transactional(readOnly = true)
-    public Page<Job> getAllActiveJobs(Pageable pageable) {
-        return jobRepository.findByIsActiveTrueAndDeletedAtIsNull(pageable);
+    public Page<JobResponseDto> getAllJobs(Pageable pageable) {
+        Role role = UserContext.get().getRole();
+        Page<Job> jobs;
+
+        if (role == Role.admin) {
+            jobs = jobRepository.findAllWithUser(pageable);
+        } else {
+            jobs = jobRepository.findByIsActiveTrueAndDeletedAtIsNull(pageable);
+        }
+
+        return jobs.map(this::mapJobToResponseDto);
     }
 
     @Override
-    @Transactional
     public Job createJob(CreateJobRequestDto request, UUID userId){
         Role role= UserContext.get().getRole();
         if(role != Role.recruiter){
@@ -77,7 +84,6 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Page<JobResponseDto> getJobsByRecruiter(UUID userId,Pageable pageable) {
         Role role=UserContext.get().getRole();
         if(role != Role.recruiter){
@@ -88,23 +94,41 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
-    @Transactional
-    public void deleteJob(UUID jobId, UUID userId) {
+    public String deleteJob(UUID jobId, UUID userId) {
         Role role=UserContext.get().getRole();
 
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
 
-        if (role != Role.recruiter || !job.getUser().getId().equals(userId)) {
+        if (role!= Role.admin && (role != Role.recruiter || !job.getUser().getId().equals(userId))) {
             throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized to delete this job.");
         }
 
         job.setDeletedAt(LocalDateTime.now());
         jobRepository.save(job);
+        return "Job deleted successfully";
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
+    public boolean toggleJobStatus(UUID jobId) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
+
+        Role role = UserContext.get().getRole();
+        UUID currentUserId = UserContext.get().getUserId();
+
+        if (role != Role.admin && !job.getUser().getId().equals(currentUserId)) {
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized to toggle this job");
+        }
+
+        job.setIsActive(!job.getIsActive());
+        jobRepository.save(job);
+
+        return job.getIsActive();
+    }
+
+    @Override
     public List<ApplicationResponseDto> getUserApplications(UUID userId) {
 
         List<Application> applications =
@@ -117,7 +141,6 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public JobResponseDto getJobById(UUID jobId){
 
         Job job = jobRepository.findById(jobId).orElseThrow(()-> new ResourceNotFoundException("Job", "id", jobId.toString()));
@@ -127,10 +150,19 @@ public class JobServiceImpl implements JobService {
 
     @Override
     public Page<JobResponseDto> searchJobs(String q, String location, Boolean remote, String type, String experience, String skills, Pageable pageable) {
+        Role role = UserContext.get().getRole();
+
         Specification<Job> spec = (root, query, cb) -> {
+            
+            if (Long.class != query.getResultType() && long.class != query.getResultType()) {
+                root.fetch("user", jakarta.persistence.criteria.JoinType.LEFT);
+            }
+
             List<Predicate> predicates = new ArrayList<>();
 
-            predicates.add(cb.isTrue(root.get("isActive")));
+            if (role != Role.admin) {
+                predicates.add(cb.isTrue(root.get("isActive")));
+            }
             predicates.add(cb.isNull(root.get("deletedAt")));
 
             if (q != null && !q.isEmpty()) {

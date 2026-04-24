@@ -73,6 +73,16 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
             """)
     int softDeleteByRecruiter(@Param("applicationId") UUID applicationId, @Param("userId") UUID userId);
 
+    @Modifying
+    @Query("""
+                UPDATE Application ap
+                SET ap.deletedAt = CURRENT_TIMESTAMP
+                WHERE ap.id = :applicationId
+                AND ap.deletedAt IS NULL
+            """)
+    int softDeleteByAdmin(@Param("applicationId") UUID applicationId);
+
+
     Optional<Application> findByUser_IdAndJob_IdAndDeletedAtIsNull(UUID userId, UUID jobId);
 
     boolean existsByUserIdAndJobIdAndDeletedAtIsNull(UUID userId, UUID jobId);
