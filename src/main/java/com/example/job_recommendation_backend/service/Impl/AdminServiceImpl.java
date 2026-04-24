@@ -5,7 +5,6 @@ import com.example.job_recommendation_backend.DTO.PlatformMetricsDto;
 import com.example.job_recommendation_backend.DTO.UserResponseDto;
 import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.enums.Role;
-import com.example.job_recommendation_backend.repository.JobRepository;
 import com.example.job_recommendation_backend.repository.projection.*;
 import com.example.job_recommendation_backend.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,9 +21,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class AdminServiceImpl implements AdminService {
-
-    @Autowired
-    private JobRepository jobRepository;
 
     @Autowired
     private UserService userService;
@@ -71,7 +67,7 @@ public class AdminServiceImpl implements AdminService {
             return "Role is already " + role;
         }
         if (user.getRole() == Role.recruiter && role != Role.recruiter) {
-            int dlt=jobRepository.softDeleteJobsByUser(id);
+            jobService.deleteAllJobsByUserId(id);
         }
 
         user.setRole(role);
@@ -155,7 +151,7 @@ public class AdminServiceImpl implements AdminService {
 
         } else if (user.getRole() == Role.recruiter) {
 
-            RecruiterAnalytics stats = jobRepository.getRecruiterAnalytics(userId);
+            RecruiterAnalytics stats = jobService.getRecruiterStats(userId);
 
             long totalApplications = stats.getTotalApplications();
 

@@ -16,7 +16,9 @@ public interface UserService {
 
     User getUserById(UUID id);
 
-    void updateUser(User user);
+    User getUserByEmail(String email);
+
+    User updateUser(User user);
 
     Page<UserResponseDto> getAllUsers(Pageable pageable);
 

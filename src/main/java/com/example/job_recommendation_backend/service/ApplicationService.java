@@ -1,7 +1,10 @@
 package com.example.job_recommendation_backend.service;
 
 import com.example.job_recommendation_backend.DTO.*;
+import com.example.job_recommendation_backend.entity.Application;
 import com.example.job_recommendation_backend.enums.Role;
+
+import java.util.List;
 import java.util.Map;
 
 import com.example.job_recommendation_backend.repository.projection.StudentAnalytics;
@@ -32,4 +35,6 @@ public interface ApplicationService {
     ApplicationResponseDto createApplication(CreateApplicationRequestDto request);
 
     ApplicationResponseDto scheduleInterview(UUID appId, LocalDateTime interviewDate);
+
+    List<Application> getAllApplicationsByUserId(UUID userId);
 }

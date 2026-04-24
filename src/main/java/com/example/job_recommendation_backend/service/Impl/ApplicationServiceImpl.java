@@ -7,14 +7,11 @@ import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.enums.ApplicationStatus;
 import com.example.job_recommendation_backend.enums.Role;
 import com.example.job_recommendation_backend.repository.ApplicationRepository;
-import com.example.job_recommendation_backend.repository.JobRepository;
-import com.example.job_recommendation_backend.repository.UserRepository;
 import com.example.job_recommendation_backend.repository.projection.StudentAnalytics;
 import com.example.job_recommendation_backend.security.UserContext;
-import com.example.job_recommendation_backend.service.ApplicationService;
-import com.example.job_recommendation_backend.service.EmailService;
-import com.example.job_recommendation_backend.service.GoogleCalendarService;
+import com.example.job_recommendation_backend.service.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -44,21 +41,21 @@ import java.util.stream.Collectors;
 public class ApplicationServiceImpl implements ApplicationService {
 
     private final ApplicationRepository applicationRepository;
-    private final JobRepository jobRepository;
-    private final UserRepository userRepository;
     private final EmailService emailService;
     private final GoogleCalendarService googleCalendarService;
+    private final JobService jobService;
+    private final UserService userService;
 
     public ApplicationServiceImpl(
             ApplicationRepository applicationRepository,
-            JobRepository jobRepository,
-            UserRepository userRepository,
+            JobService jobService,
+            UserService userService,
             EmailService emailService,
             GoogleCalendarService googleCalendarService) {
 
         this.applicationRepository = applicationRepository;
-        this.jobRepository = jobRepository;
-        this.userRepository = userRepository;
+        this.jobService = jobService;
+        this.userService = userService;
         this.emailService = emailService;
         this.googleCalendarService = googleCalendarService;
     }
@@ -66,8 +63,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     public long calculateFitScore(CalculateFitScoreDto req) {
-        Job job = jobRepository.findById(req.getJobId())
-                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", req.getJobId().toString()));
+        Job job = jobService.findById(req.getJobId());
 
         Set<String> requiredSkills = (job.getRequiredSkills() != null)
                 ? job.getRequiredSkills().stream()
@@ -89,12 +85,19 @@ public class ApplicationServiceImpl implements ApplicationService {
         return Math.round(((double) commonSkills.size() / requiredSkills.size()) * 100);
     }
 
+    @Override
     public StudentAnalytics getStudentAnalytics(UUID userId){
         return  applicationRepository.getStudentAnalytics(userId);
     }
+
+    @Override
+    public List<Application> getAllApplicationsByUserId(UUID userId){
+        return applicationRepository.findByUserId(userId);
+    }
+
     @Override
     public Map<UUID, Long> calculateFitScores(CalculateFitScoreBatchRequestDto req) {
-        List<Job> jobs = jobRepository.findAllById(req.getJobIds());
+        List<Job> jobs = jobService.findAllByIds(req.getJobIds());
         Map<UUID, Long> scores = new HashMap<>();
 
         Set<String> resumeSkills = (req.getResumeSkills() != null)
@@ -124,20 +127,19 @@ public class ApplicationServiceImpl implements ApplicationService {
         return scores;
     }
 
+    @Override
     public ApplicationResponseDto createApplication(CreateApplicationRequestDto request){
 
         var context = UserContext.get();
         UUID userId = context.getUserId();
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
+        User user = userService.getUserById(userId);
 
         if(user.getResumePath() == null || user.getResumePath().isBlank()){
             throw new CustomApiException("Please upload your resume first");
         }
 
-        Job job = jobRepository.findById(request.getJobId())
-                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", request.getJobId().toString()));
+        Job job = jobService.findById(request.getJobId());
 
         long fitScore = calculateFitScore(
                 CalculateFitScoreDto.builder()
@@ -167,6 +169,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         return mapToResponse(application,null);
     }
 
+    @Override
     public Page<ApplicationResponseDto> allApplications(UUID userId, Role role, Pageable pageable){
         if(role == Role.recruiter)
             return getAllApplicationsForRecruiter(userId, pageable);
@@ -178,6 +181,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         throw new CustomApiException("Invalid role");
     }
 
+    @Override
     public ApplicationResponseDto checkApplication(UUID userId, UUID jobId){
 
         if (jobId == null) {
@@ -190,6 +194,7 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .orElse(null);
     }
 
+    @Override
     public String deleteApplication(UUID applicationId, Role role, UUID userId){
         if(role == Role.student){
             throw new CustomApiException(HttpStatus.FORBIDDEN, "You are not allowed to do this action");
@@ -206,6 +211,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         return "Application deleted successfully";
     }
 
+    @Override
     public ApplicationResponseDto updateApplicationStatus(UUID applicationId, UpdateStatusRequestDto request){
 
         // Todo: have to No ownership validation who can update any application
@@ -305,6 +311,7 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .build();
     }
 
+    @Override
     public Resource downloadResume(UUID applicationId){
 
         Application application = applicationRepository.findById(applicationId)
@@ -392,6 +399,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         return (index != -1) ? fileName.substring(index) : "";
     }
 
+    @Override
     public ApplicationResponseDto scheduleInterview(UUID appId, LocalDateTime interviewDate) {
 
         UUID currentUserId = UserContext.get().getUserId();

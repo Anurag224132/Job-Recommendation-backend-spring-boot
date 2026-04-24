@@ -8,11 +8,12 @@ import com.example.job_recommendation_backend.entity.Application;
 import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.enums.Role;
-import com.example.job_recommendation_backend.repository.ApplicationRepository;
 import com.example.job_recommendation_backend.repository.JobRepository;
-import com.example.job_recommendation_backend.repository.UserRepository;
+import com.example.job_recommendation_backend.repository.projection.RecruiterAnalytics;
 import com.example.job_recommendation_backend.security.UserContext;
+import com.example.job_recommendation_backend.service.ApplicationService;
 import com.example.job_recommendation_backend.service.JobService;
+import com.example.job_recommendation_backend.service.UserService;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -39,10 +40,10 @@ public class JobServiceImpl implements JobService {
     private JobRepository jobRepository;
 
     @Autowired
-    private UserRepository userRepository;
+    private UserService userService;
 
     @Autowired
-    private ApplicationRepository applicationRepository;
+    private ApplicationService applicationService;
 
     @Override
     public Page<JobResponseDto> getAllJobs(Pageable pageable) {
@@ -59,12 +60,12 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
-    public Job createJob(CreateJobRequestDto request, UUID userId){
-        Role role= UserContext.get().getRole();
-        if(role != Role.recruiter){
+    public Job createJob(CreateJobRequestDto request, UUID userId) {
+        Role role = UserContext.get().getRole();
+        if (role != Role.recruiter) {
             throw new CustomApiException(HttpStatus.FORBIDDEN, "You are not allowed to perform this action");
         }
-        User user= userRepository.findById(userId).orElseThrow(()-> new ResourceNotFoundException("User", "id", userId.toString()));
+        User user = userService.getUserById(userId);
 
         Job job = Job.builder()
                 .title(request.getTitle())
@@ -84,29 +85,59 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
-    public Page<JobResponseDto> getJobsByRecruiter(UUID userId,Pageable pageable) {
-        Role role=UserContext.get().getRole();
-        if(role != Role.recruiter){
+    public Page<JobResponseDto> getJobsByRecruiter(UUID userId, Pageable pageable) {
+        Role role = UserContext.get().getRole();
+        if (role != Role.recruiter) {
             throw new CustomApiException(HttpStatus.FORBIDDEN, "Only recruiters are allowed to perform this action");
         }
-        Page<Job> jobs = jobRepository.findByRecruiterId(userId,pageable);
+        Page<Job> jobs = jobRepository.findByRecruiterId(userId, pageable);
         return jobs.map(this::mapJobToResponseDto);
     }
 
     @Override
     public String deleteJob(UUID jobId, UUID userId) {
-        Role role=UserContext.get().getRole();
+        Role role = UserContext.get().getRole();
 
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
 
-        if (role!= Role.admin && (role != Role.recruiter || !job.getUser().getId().equals(userId))) {
+        if (role != Role.admin && (role != Role.recruiter || !job.getUser().getId().equals(userId))) {
             throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized to delete this job.");
         }
 
         job.setDeletedAt(LocalDateTime.now());
         jobRepository.save(job);
         return "Job deleted successfully";
+    }
+
+    @Override
+    public Job findById(UUID id) {
+        return jobRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", id.toString()));
+    }
+
+    @Override
+    public List<Job> findAllByIds(List<UUID> jobIds) {
+        return jobRepository.findAllById(jobIds);
+    }
+
+    @Override
+    public void deleteAllJobsByUserId(UUID id) {
+        jobRepository.softDeleteJobsByUser(id);
+    }
+
+    @Override
+    public Job updateJob(Job job) {
+        try {
+            return jobRepository.save(job);
+        } catch (Exception e) {
+            throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update job: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public RecruiterAnalytics getRecruiterStats(UUID id) {
+        return jobRepository.getRecruiterAnalytics(id);
     }
 
     @Override
@@ -131,8 +162,7 @@ public class JobServiceImpl implements JobService {
     @Override
     public List<ApplicationResponseDto> getUserApplications(UUID userId) {
 
-        List<Application> applications =
-                applicationRepository.findByUserId(userId);
+        List<Application> applications = applicationService.getAllApplicationsByUserId(userId);
 
         return applications.stream()
                 .filter(app -> app.getJob() != null) // safety check
@@ -141,19 +171,21 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
-    public JobResponseDto getJobById(UUID jobId){
+    public JobResponseDto getJobById(UUID jobId) {
 
-        Job job = jobRepository.findById(jobId).orElseThrow(()-> new ResourceNotFoundException("Job", "id", jobId.toString()));
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
 
         return mapJobToResponseDto(job);
     }
 
     @Override
-    public Page<JobResponseDto> searchJobs(String q, String location, Boolean remote, String type, String experience, String skills, Pageable pageable) {
+    public Page<JobResponseDto> searchJobs(String q, String location, Boolean remote, String type, String experience,
+            String skills, Pageable pageable) {
         Role role = UserContext.get().getRole();
 
         Specification<Job> spec = (root, query, cb) -> {
-            
+
             if (Long.class != query.getResultType() && long.class != query.getResultType()) {
                 root.fetch("user", jakarta.persistence.criteria.JoinType.LEFT);
             }
@@ -170,8 +202,7 @@ public class JobServiceImpl implements JobService {
                 predicates.add(cb.or(
                         cb.like(cb.lower(root.get("title")), searchPattern),
                         cb.like(cb.lower(root.get("description")), searchPattern),
-                        cb.like(cb.lower(root.get("companyName")), searchPattern)
-                ));
+                        cb.like(cb.lower(root.get("companyName")), searchPattern)));
             }
 
             if (location != null && !location.isEmpty()) {
@@ -210,8 +241,8 @@ public class JobServiceImpl implements JobService {
 
     private JobResponseDto mapJobToResponseDto(Job job) {
 
-        RecruiterDto recruiter = job.getUser() == null ? null :
-                RecruiterDto.builder()
+        RecruiterDto recruiter = job.getUser() == null ? null
+                : RecruiterDto.builder()
                         .name(job.getUser().getName())
                         .email(job.getUser().getEmail())
                         .build();
@@ -245,6 +276,5 @@ public class JobServiceImpl implements JobService {
                 .createdAt(app.getCreatedAt())
                 .build();
     }
-
 
 }

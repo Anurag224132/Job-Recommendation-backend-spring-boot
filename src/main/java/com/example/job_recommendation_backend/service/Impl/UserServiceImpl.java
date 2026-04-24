@@ -27,17 +27,24 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserRepository userRepository;
 
+    @Override
     public User getUserById(UUID id){
-        User user = userRepository.findById(id)
+        return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id.toString()));
-        return user;
     }
 
     @Override
-    public void updateUser(User user){
+    public User getUserByEmail(String email){
+        return userRepository.findByEmailAndDeletedAtIsNull(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+    }
+
+    @Override
+    public User updateUser(User user){
         try {
-            userRepository.save(user);
+            return userRepository.save(user);
         } catch(Exception e) {
+            throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update user: " + e.getMessage());
         }
     }
 

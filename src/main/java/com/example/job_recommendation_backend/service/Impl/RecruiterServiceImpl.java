@@ -53,10 +53,9 @@ public class RecruiterServiceImpl implements RecruiterService {
     }
 
     @Override
-    public SkillGapDto skillGapAnalysis(UUID jobId, UUID userId,Pageable pageable) {
+    public SkillGapDto skillGapAnalysis(UUID jobId, UUID userId, Pageable pageable) {
 
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
+        Job job = jobService.findById(jobId);
 
         if (!job.getUser().getId().equals(userId)) {
             throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized");
@@ -67,8 +66,8 @@ public class RecruiterServiceImpl implements RecruiterService {
         Set<String> required = job.getRequiredSkills() == null
                 ? Set.of()
                 : job.getRequiredSkills().stream()
-                .map(s -> s.trim().toLowerCase())
-                .collect(Collectors.toSet());
+                        .map(s -> s.trim().toLowerCase())
+                        .collect(Collectors.toSet());
 
         Set<String> applicantSkills = applications.stream()
                 .flatMap(a -> a.getUser().getSkills() == null
@@ -85,32 +84,27 @@ public class RecruiterServiceImpl implements RecruiterService {
     }
 
     @Override
-    public List<ApplicantDto> getJobApplicants(UUID jobId, UUID userId,Pageable pageable) {
+    public List<ApplicantDto> getJobApplicants(UUID jobId, UUID userId, Pageable pageable) {
 
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
+        Job job = jobService.findById(jobId);
 
         if (!job.getUser().getId().equals(userId)) {
             throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized");
         }
 
-        Page<Application> apps = applicationRepository.findApplicantsByJobId(jobId,pageable);
+        Page<Application> apps = applicationRepository.findApplicantsByJobId(jobId, pageable);
 
-        return apps.stream().map(a ->
-                new ApplicantDto(
-                        a.getId(),
-                        a.getUser().getName(),
-                        a.getUser().getEmail(),
-                        a.getUser().getSkills(),
-                        a.getJob().getTitle()
-                )
-        ).toList();
+        return apps.stream().map(a -> new ApplicantDto(
+                a.getId(),
+                a.getUser().getName(),
+                a.getUser().getEmail(),
+                a.getUser().getSkills(),
+                a.getJob().getTitle())).toList();
     }
 
     @Override
     public JobResponseDto updateJob(UUID jobId, UUID userId, Map<String, Object> body) {
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId.toString()));
+        Job job = jobService.findById(jobId);
 
         if (!job.getUser().getId().equals(userId)) {
             throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized to update this job");
@@ -158,13 +152,13 @@ public class RecruiterServiceImpl implements RecruiterService {
             }
         }
 
-        job = jobRepository.save(job);
+        job = jobService.updateJob(job);
         return mapJobToResponseDto(job);
     }
 
     private JobResponseDto mapJobToResponseDto(Job job) {
-        RecruiterDto recruiter = job.getUser() == null ? null :
-                RecruiterDto.builder()
+        RecruiterDto recruiter = job.getUser() == null ? null
+                : RecruiterDto.builder()
                         .name(job.getUser().getName())
                         .email(job.getUser().getEmail())
                         .build();
@@ -194,7 +188,7 @@ public class RecruiterServiceImpl implements RecruiterService {
     }
 
     @Override
-    public ResponseEntity<InputStreamResource> downloadResume(UUID appId,UUID userId) {
+    public ResponseEntity<InputStreamResource> downloadResume(UUID appId, UUID userId) {
 
         Application app = applicationRepository.findById(appId)
                 .orElseThrow(() -> new ResourceNotFoundException("Application", "id", appId.toString()));
@@ -217,8 +211,7 @@ public class RecruiterServiceImpl implements RecruiterService {
             if (!filePath.startsWith(uploadPath)) {
                 throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file path");
             }
-            InputStreamResource resource =
-                    new InputStreamResource(new FileInputStream(filePath.toFile()));
+            InputStreamResource resource = new InputStreamResource(new FileInputStream(filePath.toFile()));
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -234,7 +227,7 @@ public class RecruiterServiceImpl implements RecruiterService {
     public SkillGapDto getGlobalSkillGap(UUID userId) {
         // Fetch ALL jobs for this recruiter
         Page<Job> jobs = jobRepository.findByRecruiterId(userId, PageRequest.of(0, Integer.MAX_VALUE));
-        
+
         Set<String> allRequiredSkills = jobs.stream()
                 .filter(j -> j.getRequiredSkills() != null)
                 .flatMap(j -> j.getRequiredSkills().stream())
@@ -244,7 +237,7 @@ public class RecruiterServiceImpl implements RecruiterService {
 
         // Fetch ALL applications for this recruiter
         Page<Application> apps = applicationRepository.findAllByRecruiter(userId, PageRequest.of(0, Integer.MAX_VALUE));
-        
+
         Set<String> applicantSkills = apps.stream()
                 .filter(a -> a.getUser().getSkills() != null)
                 .flatMap(a -> a.getUser().getSkills().stream())
@@ -261,13 +254,13 @@ public class RecruiterServiceImpl implements RecruiterService {
     }
 
     @Override
-    public List<RecruiterDashboardDto> getRecruiterDashboard( UUID userId, Pageable pageable) {
+    public List<RecruiterDashboardDto> getRecruiterDashboard(UUID userId, Pageable pageable) {
 
         Page<Application> apps = applicationRepository.findAllByRecruiter(userId, pageable);
 
-        //Todo: have to move aggregation on db level or paginate it for heavy calculation
-        Map<Job, List<Application>> grouped =
-                apps.stream().collect(Collectors.groupingBy(Application::getJob));
+        // Todo: have to move aggregation on db level or paginate it for heavy
+        // calculation
+        Map<Job, List<Application>> grouped = apps.stream().collect(Collectors.groupingBy(Application::getJob));
 
         return grouped.entrySet().stream().map(entry -> {
 
@@ -279,14 +272,13 @@ public class RecruiterServiceImpl implements RecruiterService {
                             a.getUser().getName(),
                             a.getUser().getEmail(),
                             a.getUser().getSkills(),
-                            job.getTitle()
-                    )).toList();
+                            job.getTitle()))
+                    .toList();
 
             return new RecruiterDashboardDto(
                     job.getId(),
                     job.getTitle(),
-                    applicants
-            );
+                    applicants);
 
         }).toList();
     }
