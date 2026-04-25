@@ -35,7 +35,7 @@ public class SecurityConfig {
                                 .csrf(csrf -> csrf.disable())
                                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/api/auth/**","/actuator/health","/actuator/prometheus")
+                                                .requestMatchers("/api/auth/**","/actuator/health")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
                                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
