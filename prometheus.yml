@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # --- LOCAL DEVELOPMENT ---
+  # Use this when running the Spring Boot app on your host machine.
+  - job_name: 'spring-boot-local'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+        labels:
+          application: 'job_recommendation_backend'
+
+  # --- RENDER (PRODUCTION) ---
+  # Uncomment and set your Render URL to scrape from production.
+  # Only works if the docker-compose monitoring stack can reach the internet.
+  # NOTE: For production, Grafana Cloud + OTLP push is preferred over this approach.
+  #
+  # - job_name: 'spring-boot-render'
+  #   metrics_path: '/actuator/prometheus'
+  #   scrape_interval: 30s
+  #   scheme: https
+  #   static_configs:
+  #     - targets: ['your-app-name.onrender.com']
+  #       labels:
+  #         application: 'job_recommendation_backend'
+  #         environment: 'production'

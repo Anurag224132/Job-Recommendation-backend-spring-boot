@@ -62,3 +62,32 @@ brevo:
   api-key: ${BREVO_API_KEY:}
   from-email: ${BREVO_FROM_EMAIL:}
   from-name: ${BREVO_FROM_NAME:SkillSparTeam}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    prometheus:
+      enabled: true
+    health:
+      show-details: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  otlp:
+    metrics:
+      export:
+        # Set GRAFANA_OTLP_URL on Render to: https://otlp-gateway-prod-ap-south-1.grafana.net/otlp/v1/metrics
+        url: ${GRAFANA_OTLP_URL:}
+        headers:
+          Authorization: ${GRAFANA_OTLP_AUTH:}
+        step: 30s
+        resource-attributes:
+          service.name: ${spring.application.name}
+          deployment.environment: ${RENDER_SERVICE_NAME:local}
+  metrics:
+    tags:
+      application: ${spring.application.name}
