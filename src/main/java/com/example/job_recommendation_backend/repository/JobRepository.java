@@ -44,15 +44,6 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
     @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL")
     Page<Job> findAllWithUser(Pageable pageable);
 
-    @EntityGraph(attributePaths = {"user"})
-    @Query("""
-                SELECT j FROM Job j
-                WHERE j.deletedAt IS NULL AND (
-                   LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
-                   OR LOWER(j.companyName) LIKE LOWER(CONCAT('%', :query, '%')))
-            """)
-    Page<Job> searchJobsWithUser(@Param("query") String query, Pageable pageable);
-
     @Modifying
     @Transactional
     @Query("UPDATE Job j SET j.isActive = CASE  WHEN j.isActive = true THEN false ELSE true END WHERE j.id = :id ")

@@ -39,3 +39,7 @@ services:
         sync: false
       - key: NOTIFICATION_QUEUE
         value: coinshift-notification-queue
+      - key: GRAFANA_OTLP_URL
+        sync: false
+      - key: GRAFANA_OTLP_AUTH
+        sync: false
