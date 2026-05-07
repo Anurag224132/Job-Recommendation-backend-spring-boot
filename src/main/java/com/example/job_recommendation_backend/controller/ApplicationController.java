@@ -2,15 +2,15 @@ package com.example.job_recommendation_backend.controller;
 
 import com.example.job_recommendation_backend.DTO.*;
 import com.example.job_recommendation_backend.enums.Role;
-import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.ApplicationService;
 import com.example.job_recommendation_backend.exception.CustomApiException;
+import com.example.job_recommendation_backend.utility.AuthUtil;
+import com.example.job_recommendation_backend.utility.PaginationUtil;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +25,12 @@ import java.util.UUID;
 public class ApplicationController {
 
     private final ApplicationService applicationService;
+
+    @Autowired
+    private PaginationUtil paginationUtil;
+
+    @Autowired
+    private AuthUtil authUtil;
 
     public ApplicationController(ApplicationService applicationService) {
         this.applicationService = applicationService;
@@ -56,15 +62,14 @@ public class ApplicationController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        Pageable pageable = getPageable(page, size);
-        var context = UserContext.get();
-        UUID authenticatedId = context.getUserId();
+        Pageable pageable = paginationUtil.getPageable(page, size);
+        UUID authenticatedId = authUtil.getCurrentUserId();
 
         if (!authenticatedId.equals(recruiterId)) {
             throw new CustomApiException(HttpStatus.FORBIDDEN, "You can only view your own applications");
         }
 
-        return ResponseEntity.ok(applicationService.allApplications(recruiterId, context.getRole(), pageable));
+        return ResponseEntity.ok(applicationService.allApplications(recruiterId, authUtil.getCurrentUserRole(), pageable));
     }
 
 
@@ -80,8 +85,8 @@ public class ApplicationController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        Pageable pageable = getPageable(page, size);
-        UUID userId = UserContext.get().getUserId();
+        Pageable pageable = paginationUtil.getPageable(page, size);
+        UUID userId = authUtil.getCurrentUserId();
 
         return ResponseEntity.ok(applicationService.allApplications(userId, Role.student, pageable));
     }
@@ -115,21 +120,15 @@ public class ApplicationController {
 
     @GetMapping("/check")
     public ResponseEntity<ApplicationResponseDto> checkApplication(@RequestParam UUID jobId) {
-        UUID userId = UserContext.get().getUserId();
+        UUID userId = authUtil.getCurrentUserId();
         return ResponseEntity.ok(applicationService.checkApplication(userId, jobId));
     }
 
 
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteApplication(@PathVariable UUID id) {
-        var context = UserContext.get();
-        UUID userId = context.getUserId();
-        Role role = context.getRole();
+        UUID userId = authUtil.getCurrentUserId();
+        Role role = authUtil.getCurrentUserRole();
         return ResponseEntity.ok(applicationService.deleteApplication(id, role, userId));
-    }
-
-    private Pageable getPageable(int page, int size) {
-        size = Math.min(size, 50);
-        return PageRequest.of(page, size, Sort.by("createdAt").descending());
     }
 }

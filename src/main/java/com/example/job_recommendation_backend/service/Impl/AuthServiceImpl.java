@@ -6,10 +6,10 @@ import com.example.job_recommendation_backend.DTO.RegisterUserDto;
 import com.example.job_recommendation_backend.DTO.UserResponseDto;
 import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.enums.Role;
-import com.example.job_recommendation_backend.repository.UserRepository;
 import com.example.job_recommendation_backend.security.JwtUtil;
 import com.example.job_recommendation_backend.service.AuthService;
 import com.example.job_recommendation_backend.service.EmailService;
+import com.example.job_recommendation_backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,11 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
 
 import com.example.job_recommendation_backend.exception.CustomApiException;
-import com.example.job_recommendation_backend.exception.ResourceNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
@@ -32,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class AuthServiceImpl implements AuthService {
 
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final RedisTemplate<String, String> redisTemplate;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
@@ -46,7 +44,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void initiateRegistration(RegisterUserDto registerUserDto) {
-        if (userRepository.findByEmail(registerUserDto.getEmail()).isPresent()) {
+
+        if (userService.getUserByEmail(registerUserDto.getEmail()) != null) {
             throw new CustomApiException(HttpStatus.CONFLICT, "User with this email already exists");
         }
         sendAndStoreOtp(registerUserDto.getEmail(), registerUserDto.getName(), OTP_SIGNUP_PREFIX);
@@ -76,7 +75,7 @@ public class AuthServiceImpl implements AuthService {
             user.setLastLogin(new ArrayList<>());
         }
         user.getLastLogin().add(LocalDateTime.now());
-        User savedUser = userRepository.save(user);
+        User savedUser = userService.updateUser(user);
         String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getRole().name());
 
         redisTemplate.delete(key);
@@ -87,9 +86,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse login(LoginRequest loginRequest) {
-        User user = userRepository.findByEmail(loginRequest.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", loginRequest.getEmail()));
-
+        User user = userService.getUserByEmail(loginRequest.getEmail());
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
             throw new CustomApiException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
@@ -98,7 +95,7 @@ public class AuthServiceImpl implements AuthService {
             user.setLastLogin(new ArrayList<>());
         }
         user.getLastLogin().add(LocalDateTime.now());
-        userRepository.save(user);
+        userService.updateUser(user);
 
         String token = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole().name());
         return new LoginResponse(token, UserResponseDto.fromEntity(user));
@@ -106,8 +103,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public UserResponseDto getCurrentUser(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        User user = userService.getUserByEmail(email);
         return UserResponseDto.fromEntity(user);
     }
 
@@ -118,8 +114,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void initiateForgotPassword(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        User user = userService.getUserByEmail(email);
 
         sendAndStoreOtp(email, user.getName(), OTP_FORGOT_PREFIX);
     }
@@ -133,15 +128,14 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid or expired OTP");
         }
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        User user = userService.getUserByEmail(email);
 
         if (passwordEncoder.matches(newPassword, user.getPassword())) {
             throw new CustomApiException(HttpStatus.BAD_REQUEST, "New password cannot be the same as the old password");
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
+        userService.updateUser(user);
 
         redisTemplate.delete(key);
         log.info("Password reset successful for user: {}", email);

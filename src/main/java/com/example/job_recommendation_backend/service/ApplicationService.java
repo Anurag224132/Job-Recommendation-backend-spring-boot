@@ -1,8 +1,13 @@
 package com.example.job_recommendation_backend.service;
 
 import com.example.job_recommendation_backend.DTO.*;
+import com.example.job_recommendation_backend.entity.Application;
 import com.example.job_recommendation_backend.enums.Role;
+
+import java.util.List;
 import java.util.Map;
+
+import com.example.job_recommendation_backend.repository.projection.StudentAnalytics;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,9 +28,13 @@ public interface ApplicationService {
 
     String deleteApplication(UUID applicationId, Role role, UUID userId);
 
+    StudentAnalytics getStudentAnalytics(UUID userId);
+
     ApplicationResponseDto updateApplicationStatus(UUID applicationId, UpdateStatusRequestDto request);
 
     ApplicationResponseDto createApplication(CreateApplicationRequestDto request);
 
     ApplicationResponseDto scheduleInterview(UUID appId, LocalDateTime interviewDate);
+
+    List<Application> getAllApplicationsByUserId(UUID userId);
 }

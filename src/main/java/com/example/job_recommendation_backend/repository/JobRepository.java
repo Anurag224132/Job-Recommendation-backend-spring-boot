@@ -23,8 +23,8 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
                 SELECT
                     COALESCE((SELECT COUNT(*) FROM jobs WHERE user_id = :userId AND deleted_at IS NULL), 0) AS jobsPosted,
             
-                    COALESCE((SELECT COUNT(*) 
-                              FROM applications a 
+                    COALESCE((SELECT COUNT(*)
+                              FROM applications a
                               JOIN jobs j ON a.job_id = j.id 
                               WHERE j.user_id = :userId AND a.deleted_at IS NULL), 0) AS totalApplications,
             
@@ -44,17 +44,6 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
     @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL")
     Page<Job> findAllWithUser(Pageable pageable);
 
-    @EntityGraph(attributePaths = {"user"})
-    @Query("""
-                SELECT j FROM Job j
-                WHERE j.deletedAt IS NULL
-                  AND (
-                       LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(j.companyName) LIKE LOWER(CONCAT('%', :query, '%'))
-                  )
-            """)
-    Page<Job> searchJobsWithUser(@Param("query") String query, Pageable pageable);
-
     @Modifying
     @Transactional
     @Query("UPDATE Job j SET j.isActive = CASE  WHEN j.isActive = true THEN false ELSE true END WHERE j.id = :id ")
@@ -63,7 +52,7 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
     @Modifying
     @Transactional
     @Query("UPDATE Job j SET j.deletedAt = CURRENT_TIMESTAMP WHERE j.user.id = :userId")
-    void softDeleteJobsByUser(@Param("userId") UUID userId);
+    int softDeleteJobsByUser(@Param("userId") UUID userId);
 
     @EntityGraph(attributePaths = {"user"})
     Page<Job> findByIsActiveTrueAndDeletedAtIsNull(Pageable pageable);

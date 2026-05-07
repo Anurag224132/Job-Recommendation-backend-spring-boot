@@ -1,11 +1,12 @@
 package com.example.job_recommendation_backend.controller;
 
 import com.example.job_recommendation_backend.DTO.*;
-import com.example.job_recommendation_backend.enums.Role;
 import com.example.job_recommendation_backend.service.AdminService;
+import com.example.job_recommendation_backend.utility.AuthUtil;
+import com.example.job_recommendation_backend.utility.PaginationUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,9 +22,17 @@ public class AdminController {
 
     private final AdminService adminService;
 
+    @Autowired
+    private PaginationUtil paginationUtil;
+
+    @Autowired
+    private AuthUtil authUtil;
+
+
+
     @GetMapping("/users")
     public ResponseEntity<Page<UserResponseDto>> getAllUsers(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = paginationUtil.getPageable(page, size);
         return ResponseEntity.ok(adminService.getAllUsers(pageable));
     }
 
@@ -43,13 +52,13 @@ public class AdminController {
     public ResponseEntity<Page<JobResponseDto>> getAllJobs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = paginationUtil.getPageable(page, size);
         return ResponseEntity.ok(adminService.getAllJobs(pageable));
     }
 
     @DeleteMapping("/jobs/{id}")
     public ResponseEntity<ApiResponseDto> deleteJob(@PathVariable UUID id) {
-        String message = adminService.deleteJob(id);
+        String message = adminService.deleteJob(id,authUtil.getCurrentUserId());
         return ResponseEntity.ok(new ApiResponseDto(message, true));
     }
 
@@ -73,7 +82,7 @@ public class AdminController {
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = paginationUtil.getPageable(page, size);
         return ResponseEntity.ok(adminService.searchUsers(query, pageable));
     }
 
@@ -82,7 +91,7 @@ public class AdminController {
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = paginationUtil.getPageable(page, size);
         return ResponseEntity.ok(adminService.searchJobs(query, pageable));
     }
 
@@ -94,20 +103,20 @@ public class AdminController {
 
     @GetMapping("/applications")
     public ResponseEntity<Page<ApplicationResponseDto>> getAllApplications(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(adminService.getAllApplications(pageable));
+        Pageable pageable = paginationUtil.getPageable(page, size);
+        return ResponseEntity.ok(adminService.getAllApplications(authUtil.getCurrentUserId(),authUtil.getCurrentUserRole(),pageable));
     }
 
     @GetMapping("/interviews")
     public ResponseEntity<Page<InterviewResponseDto>> getAllInterviews(
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = paginationUtil.getPageable(page, size);
         return ResponseEntity.ok(adminService.getAllInterviews(pageable));
     }
 
     @DeleteMapping("/applications/{id}")
     public ResponseEntity<ApiResponseDto> deleteApplication(@PathVariable UUID id) {
-        String message = adminService.deleteApplication(id);
+        String message = adminService.deleteApplication(id,authUtil.getCurrentUserRole(),authUtil.getCurrentUserId());
         return ResponseEntity.ok(new ApiResponseDto(message, true));
     }
 
