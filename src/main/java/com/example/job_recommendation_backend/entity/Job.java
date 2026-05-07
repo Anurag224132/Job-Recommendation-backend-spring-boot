@@ -18,7 +18,12 @@ import java.util.UUID;
 
 @Entity
 @Table(
-        name = "jobs"
+        name = "jobs",
+        indexes = {
+                @Index(columnList = "deleted_at"),
+                @Index(columnList = "is_active"),
+                @Index(columnList = "user_id")
+        }
 )
 @EntityListeners(AuditingEntityListener.class)
 @SQLDelete(sql = "UPDATE jobs SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")

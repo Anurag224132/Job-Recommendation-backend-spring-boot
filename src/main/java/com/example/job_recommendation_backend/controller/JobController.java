@@ -41,15 +41,14 @@ public class JobController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<Job>> getJobs(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Page<JobResponseDto>> getJobs(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = getPageable(page, size);
         return ResponseEntity.ok(jobService.getAllActiveJobs(pageable));
     }
 
-    // Todo : do not return job directly make dto
     @PreAuthorize("hasRole('RECRUITER')")
     @PostMapping
-    public ResponseEntity<Job> createJob(@Valid @RequestBody CreateJobRequestDto request) {
+    public ResponseEntity<JobResponseDto> createJob(@Valid @RequestBody CreateJobRequestDto request) {
         return ResponseEntity.ok(jobService.createJob(request, getUserId()));
     }
 

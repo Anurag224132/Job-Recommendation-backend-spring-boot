@@ -13,9 +13,9 @@ import java.util.UUID;
 
 public interface JobService {
 
-    Page<Job> getAllActiveJobs(Pageable pageable);
+    Page<JobResponseDto> getAllActiveJobs(Pageable pageable);
 
-    Job createJob(CreateJobRequestDto request, UUID userId);
+    JobResponseDto createJob(CreateJobRequestDto request, UUID userId);
 
     Page<JobResponseDto> getJobsByRecruiter(UUID userId,Pageable pageable);
 

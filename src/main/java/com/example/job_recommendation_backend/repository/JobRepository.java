@@ -65,8 +65,10 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
     @Query("UPDATE Job j SET j.deletedAt = CURRENT_TIMESTAMP WHERE j.user.id = :userId")
     void softDeleteJobsByUser(@Param("userId") UUID userId);
 
+    @EntityGraph(attributePaths = {"user"})
     Page<Job> findByIsActiveTrueAndDeletedAtIsNull(Pageable pageable);
 
+    @EntityGraph(attributePaths = {"user"})
     @Query("select j from Job j where j.user.id = :recruiterId AND j.deletedAt IS NULL")
     Page<Job> findByRecruiterId(@Param("recruiterId") UUID recruiterId, Pageable pageable);
 
