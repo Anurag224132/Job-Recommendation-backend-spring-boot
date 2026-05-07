@@ -15,7 +15,7 @@ public interface JobService {
 
     Page<JobResponseDto> getAllJobs(Pageable pageable);
 
-    Job createJob(CreateJobRequestDto request, UUID userId);
+    JobResponseDto createJob(CreateJobRequestDto request, UUID userId);
 
     Page<JobResponseDto> getJobsByRecruiter(UUID userId, Pageable pageable);
 

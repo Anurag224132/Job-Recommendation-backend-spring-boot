@@ -10,12 +10,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
+import lombok.RequiredArgsConstructor;
+
 @RestController
 @RequestMapping("/api/resumes")
+@RequiredArgsConstructor
 public class ResumeController {
 
-    @Autowired
-    private ResumeService resumeService;
+    private final ResumeService resumeService;
 
     @Autowired
     private AuthUtil authUtil;

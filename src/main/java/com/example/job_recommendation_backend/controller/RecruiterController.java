@@ -15,13 +15,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import lombok.RequiredArgsConstructor;
+
 @RestController
 @RequestMapping("/api/recruiter")
 @PreAuthorize("hasRole('RECRUITER')")
+@RequiredArgsConstructor
 public class RecruiterController {
 
-    @Autowired
-    private RecruiterService recruiterService;
+    private final RecruiterService recruiterService;
 
     @Autowired
     private PaginationUtil paginationUtil;

@@ -52,10 +52,9 @@ public class JobController {
         return ResponseEntity.ok(jobService.getAllJobs(pageable));
     }
 
-    // Todo : do not return job directly make dto
     @PreAuthorize("hasRole('RECRUITER')")
     @PostMapping
-    public ResponseEntity<Job> createJob(@Valid @RequestBody CreateJobRequestDto request) {
+    public ResponseEntity<JobResponseDto> createJob(@Valid @RequestBody CreateJobRequestDto request) {
         return ResponseEntity.ok(jobService.createJob(request, authUtil.getCurrentUserId()));
     }
 

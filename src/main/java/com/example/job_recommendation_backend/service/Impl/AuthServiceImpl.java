@@ -30,16 +30,11 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class AuthServiceImpl implements AuthService {
 
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private RedisTemplate<String, String> redisTemplate;
-    @Autowired
-    private EmailService emailService;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final UserService userService;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
 
     private static final String OTP_SIGNUP_PREFIX = "OTP:SIGNUP:";
     private static final String OTP_FORGOT_PREFIX = "OTP:FORGOT:";

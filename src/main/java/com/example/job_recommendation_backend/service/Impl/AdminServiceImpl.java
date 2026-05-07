@@ -18,21 +18,16 @@ import com.example.job_recommendation_backend.DTO.*;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class AdminServiceImpl implements AdminService {
 
-    @Autowired
-    private UserService userService;
-
-    @Autowired
-    private JobService jobService;
-
-    @Autowired
-    private ApplicationService applicationService;
-
-    @Autowired
-    private InterviewService interviewService;
+    private final UserService userService;
+    private final JobService jobService;
+    private final ApplicationService applicationService;
+    private final InterviewService interviewService;
 
     @Override
     public Page<UserResponseDto> getAllUsers(Pageable pageable) {

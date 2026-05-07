@@ -32,20 +32,20 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class JobServiceImpl implements JobService {
 
-    @Autowired
-    private JobRepository jobRepository;
+    private final JobRepository jobRepository;
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
-    @Autowired
-    private ApplicationRepository applicationRepository;
+    private final ApplicationRepository applicationRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public Page<JobResponseDto> getAllJobs(Pageable pageable) {
         Role role = UserContext.get().getRole();
         Page<Job> jobs;
@@ -60,7 +60,8 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
-    public Job createJob(CreateJobRequestDto request, UUID userId) {
+    @Transactional
+    public JobResponseDto createJob(CreateJobRequestDto request, UUID userId) {
         Role role = UserContext.get().getRole();
         if (role != Role.recruiter) {
             throw new CustomApiException(HttpStatus.FORBIDDEN, "You are not allowed to perform this action");
@@ -81,7 +82,7 @@ public class JobServiceImpl implements JobService {
                 .requiredSkills(request.getRequiredSkills())
                 .build();
         jobRepository.save(job);
-        return job;
+        return mapJobToResponseDto(job);
     }
 
     @Override

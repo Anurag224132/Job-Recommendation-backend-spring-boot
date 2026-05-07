@@ -22,7 +22,12 @@ import java.util.UUID;
 
 @Entity
 @Table(
-        name = "users"
+        name = "users",
+        indexes = {
+                @Index(columnList = "deleted_at"),
+                @Index(columnList = "email"),
+                @Index(columnList = "role")
+        }
 )
 @EntityListeners(AuditingEntityListener.class)
 @SQLDelete(sql = "UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
