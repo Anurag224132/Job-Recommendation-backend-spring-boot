@@ -15,7 +15,7 @@ public class AnalyticsCardDto {
     private long totalUsers;
     private long activeJobs;
     private long totalApplications;
-    private long totalCourses;
+    private long totalInterviews;
     private long studentCount;
     private long recruiterCount;
     private long adminCount;

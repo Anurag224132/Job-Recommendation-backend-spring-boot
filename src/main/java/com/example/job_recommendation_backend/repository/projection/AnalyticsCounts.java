@@ -7,4 +7,5 @@ public interface AnalyticsCounts {
     long getAdminCount();
     long getTotalJobs();
     long getTotalApplications();
+    long getTotalInterviews();
 }

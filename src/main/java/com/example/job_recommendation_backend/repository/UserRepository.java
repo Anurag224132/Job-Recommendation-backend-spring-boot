@@ -37,13 +37,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             """, nativeQuery = true)
     PlatformMetrics getPlatformMetrics();
 
-    @Query(value = "SELECT trim(to_char(ula.login_timestamp, 'Dy')) as day, COUNT(*) as count " +
-            "FROM user_login_activity ula " +
-            "JOIN users u ON ula.user_id = u.id " +
-            "WHERE ula.login_timestamp BETWEEN :startDate AND :endDate " +
-            "AND u.deleted_at IS NULL " +
-            "GROUP BY extract(DOW from ula.login_timestamp), day " +
-            "ORDER BY extract(DOW from ula.login_timestamp)",
+    @Query(value = "SELECT trim(to_char(d.date, 'Dy')) as day, COALESCE(SUM(d.login_count), 0) as count " +
+            "FROM daily_login_activity d " +
+            "WHERE d.date BETWEEN CAST(:startDate AS date) AND CAST(:endDate AS date) " +
+            "GROUP BY extract(DOW from d.date), day " +
+            "ORDER BY extract(DOW from d.date)",
             nativeQuery = true)
     List<UserActivity> getUserActivityByDay(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
@@ -64,7 +62,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                     (SELECT COUNT(*) FROM users WHERE role = 'recruiter' AND deleted_at IS NULL) as recruiterCount,
                     (SELECT COUNT(*) FROM users WHERE role = 'admin' AND deleted_at IS NULL) as adminCount,
                     (SELECT COUNT(*) FROM jobs WHERE deleted_at IS NULL) as totalJobs,
-                    (SELECT COUNT(*) FROM applications WHERE deleted_at IS NULL) as totalApplications
+                    (SELECT COUNT(*) FROM applications WHERE deleted_at IS NULL) as totalApplications,
+                    (SELECT COUNT(*) FROM interviews WHERE deleted_at IS NULL) as totalInterviews
             """, nativeQuery = true)
     AnalyticsCounts getAnalyticsCounts();
 }
