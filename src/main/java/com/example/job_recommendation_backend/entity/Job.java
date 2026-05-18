@@ -47,7 +47,8 @@ public class Job {
     private String title;
     @NotBlank(message = "Job description is required")
     private String description;
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.LAZY)
+    @org.hibernate.annotations.BatchSize(size = 50)
     private List<String> requiredSkills;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
