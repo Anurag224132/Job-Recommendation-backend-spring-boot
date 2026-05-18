@@ -10,6 +10,7 @@ import com.example.job_recommendation_backend.security.JwtUtil;
 import com.example.job_recommendation_backend.service.AuthService;
 import com.example.job_recommendation_backend.service.EmailService;
 import com.example.job_recommendation_backend.service.UserService;
+import com.example.job_recommendation_backend.repository.DailyLoginActivityRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import org.springframework.http.HttpStatus;
 
 import com.example.job_recommendation_backend.exception.CustomApiException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
@@ -35,6 +37,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final DailyLoginActivityRepository dailyLoginActivityRepository;
 
     private static final String OTP_SIGNUP_PREFIX = "OTP:SIGNUP:";
     private static final String OTP_FORGOT_PREFIX = "OTP:FORGOT:";
@@ -71,11 +74,9 @@ public class AuthServiceImpl implements AuthService {
                 .role(Role.valueOf(registerUserDto.getRole().toLowerCase()))
                 .build();
 
-        if (user.getLastLogin() == null) {
-            user.setLastLogin(new ArrayList<>());
-        }
-        user.getLastLogin().add(LocalDateTime.now());
+        user.setLastLogin(LocalDateTime.now());
         User savedUser = userService.updateUser(user);
+        dailyLoginActivityRepository.incrementLoginCount(LocalDate.now());
         String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getRole().name());
 
         redisTemplate.delete(key);
@@ -91,11 +92,9 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomApiException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
 
-        if (user.getLastLogin() == null) {
-            user.setLastLogin(new ArrayList<>());
-        }
-        user.getLastLogin().add(LocalDateTime.now());
+        user.setLastLogin(LocalDateTime.now());
         userService.updateUser(user);
+        dailyLoginActivityRepository.incrementLoginCount(LocalDate.now());
 
         String token = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole().name());
         return new LoginResponse(token, UserResponseDto.fromEntity(user));

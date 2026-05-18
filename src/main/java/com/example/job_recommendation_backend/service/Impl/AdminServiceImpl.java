@@ -103,7 +103,7 @@ public class AdminServiceImpl implements AdminService {
                 .totalUsers(counts.getTotalUsers())
                 .activeJobs(counts.getTotalJobs())
                 .totalApplications(counts.getTotalApplications())
-                .totalCourses(0)
+                .totalInterviews(counts.getTotalInterviews())
                 .studentCount(counts.getStudentCount())
                 .recruiterCount(counts.getRecruiterCount())
                 .adminCount(counts.getAdminCount())
@@ -122,9 +122,9 @@ public class AdminServiceImpl implements AdminService {
                 .email(user.getEmail())
                 .role(user.getRole())
                 .lastActive(
-                        user.getLastLogin().isEmpty()
+                        user.getLastLogin() == null
                                 ? user.getUpdatedAt()
-                                : user.getLastLogin().get(user.getLastLogin().size() - 1))
+                                : user.getLastLogin())
                 .createdAt(user.getCreatedAt())
                 .skills(user.getSkills())
                 .profileCompleted(calculateProfileCompletion(user));

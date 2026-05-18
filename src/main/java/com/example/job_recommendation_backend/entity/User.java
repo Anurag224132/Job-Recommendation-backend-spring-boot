@@ -63,12 +63,7 @@ public class User {
     @Builder.Default
     private LocalDateTime deletedAt = null;
 
-    @ElementCollection
-    @CollectionTable(name = "user_login_activity", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "login_timestamp")
-    @Builder.Default
-    private List<LocalDateTime> lastLogin = new ArrayList<>();
-
+    private LocalDateTime lastLogin;
     @ElementCollection
     private List<String> skills;
 
