@@ -144,4 +144,26 @@ public class EmailServiceImpl implements EmailService {
                 bodyContent
         );
     }
+
+    @Override
+    @Async
+    public void sendContactUsEmail(String name, String email, String subject, String message) {
+        String adminEmail = "ravi9162621762@gmail.com";
+        String title = "New Contact Us Query: " + subject;
+        
+        String body = String.format(
+                "<p>You have received a new query from the SkillSpark Contact Us form:</p>" +
+                        "<div style=\"background: #f8fafc; padding: 20px; border-left: 4px solid #2563eb; margin: 20px 0;\">" +
+                        "<p><strong>Name:</strong> %s</p>" +
+                        "<p><strong>Email:</strong> %s</p>" +
+                        "<p><strong>Subject:</strong> %s</p>" +
+                        "<p><strong>Message:</strong></p>" +
+                        "<p style=\"white-space: pre-wrap;\">%s</p>" +
+                        "</div>",
+                name, email, subject, message
+        );
+
+        String htmlContent = buildEmailTemplate(title, body);
+        sendEmailViaBrevo(adminEmail, "SkillSpark Admin", title, htmlContent);
+    }
 }
