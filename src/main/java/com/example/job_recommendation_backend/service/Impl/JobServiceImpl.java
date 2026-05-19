@@ -270,11 +270,13 @@ public class JobServiceImpl implements JobService {
         return ApplicationResponseDto.builder()
                 .id(app.getId())
                 .studentName(app.getUser().getName())
+                .studentEmail(app.getUser().getEmail())
                 .jobTitle(app.getJob().getTitle())
                 .companyName(app.getJob().getCompanyName())
                 .status(app.getStatus())
                 .fitScore(app.getFitScore() != null ? app.getFitScore().toString() : null)
                 .createdAt(app.getCreatedAt())
+                .isViewed(app.isViewed())
                 .build();
     }
 

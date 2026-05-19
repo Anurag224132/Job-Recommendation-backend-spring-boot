@@ -16,6 +16,7 @@ import java.util.UUID;
 public class ApplicationResponseDto {
     private UUID id;
     private String studentName;
+    private String studentEmail;
     private String jobTitle;
     private String companyName;
     private ApplicationStatus status;
@@ -23,11 +24,14 @@ public class ApplicationResponseDto {
     private LocalDateTime createdAt;
     private String recruiterName;
     private JobResponseDto job;
+    private boolean isViewed;
+
 
     // Required for JPA constructor projection in ApplicationRepository
-    public ApplicationResponseDto(UUID id, String studentName, String jobTitle, String companyName, ApplicationStatus status, String fitScore, LocalDateTime createdAt, String recruiterName) {
+    public ApplicationResponseDto(UUID id, String studentName, String studentEmail, String jobTitle, String companyName, ApplicationStatus status, String fitScore, LocalDateTime createdAt, String recruiterName) {
         this.id = id;
         this.studentName = studentName;
+        this.studentEmail = studentEmail;
         this.jobTitle = jobTitle;
         this.companyName = companyName;
         this.status = status;
@@ -36,3 +40,4 @@ public class ApplicationResponseDto {
         this.recruiterName = recruiterName;
     }
 }
+

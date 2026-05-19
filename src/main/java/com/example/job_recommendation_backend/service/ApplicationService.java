@@ -22,6 +22,9 @@ public interface ApplicationService {
 
     Resource downloadResume(UUID applicationId);
 
+    /** Returns the resume URL + student name for an application so frontend can fetch directly */
+    Map<String, String> getResumeUrl(UUID applicationId);
+
     Page<ApplicationResponseDto> allApplications(UUID userId, Role role, Pageable pageable);
 
     ApplicationResponseDto checkApplication(UUID userId, UUID jobId);
@@ -37,4 +40,6 @@ public interface ApplicationService {
     ApplicationResponseDto scheduleInterview(UUID appId, LocalDateTime interviewDate);
 
     List<Application> getAllApplicationsByUserId(UUID userId);
+
+    long countUnviewedApplications(UUID recruiterId);
 }

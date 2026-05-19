@@ -41,6 +41,7 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
             SELECT new com.example.job_recommendation_backend.DTO.ApplicationResponseDto(
                 a.id,
                 u.name,
+                u.email,
                 j.title,
                 j.companyName,
                 a.status,
@@ -113,4 +114,7 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
                 WHERE a.job.user.id = :recruiterId
             """)
     Page<Application> findAllByRecruiter(@Param("recruiterId") UUID recruiterId, Pageable pageable);
+
+    @Query("SELECT COUNT(a) FROM Application a WHERE a.isViewed = false AND a.job.user.id = :recruiterId AND a.deletedAt IS NULL")
+    long countUnviewedApplicationsForRecruiter(@Param("recruiterId") UUID recruiterId);
 }

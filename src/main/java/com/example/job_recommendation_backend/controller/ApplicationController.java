@@ -72,6 +72,19 @@ public class ApplicationController {
         return ResponseEntity.ok(applicationService.allApplications(recruiterId, authUtil.getCurrentUserRole(), pageable));
     }
 
+    @PreAuthorize("hasRole('RECRUITER')")
+    @GetMapping("/recruiter/{recruiterId}/unviewed-count")
+    public ResponseEntity<Long> getUnviewedApplicationsCount(@PathVariable UUID recruiterId) {
+        UUID authenticatedId = authUtil.getCurrentUserId();
+
+        if (!authenticatedId.equals(recruiterId)) {
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "You can only view your own counts");
+        }
+
+        return ResponseEntity.ok(applicationService.countUnviewedApplications(recruiterId));
+    }
+
+
 
     @PutMapping("/{id}/status")
     public ResponseEntity<ApplicationResponseDto> updateStatus(@PathVariable UUID id, @RequestBody UpdateStatusRequestDto request) {
@@ -113,10 +126,16 @@ public class ApplicationController {
     public ResponseEntity<Resource> downloadResume(@PathVariable UUID applicationId) {
         Resource resource = applicationService.downloadResume(applicationId);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
                 .body(resource);
     }
 
+    @PreAuthorize("hasAnyRole('RECRUITER','STUDENT')")
+    @GetMapping("/{applicationId}/resume-url")
+    public ResponseEntity<java.util.Map<String, String>> getResumeUrl(@PathVariable UUID applicationId) {
+        return ResponseEntity.ok(applicationService.getResumeUrl(applicationId));
+    }
 
     @GetMapping("/check")
     public ResponseEntity<ApplicationResponseDto> checkApplication(@RequestParam UUID jobId) {

@@ -166,4 +166,28 @@ public class EmailServiceImpl implements EmailService {
         String htmlContent = buildEmailTemplate(title, body);
         sendEmailViaBrevo(adminEmail, "SkillSpark Admin", title, htmlContent);
     }
+
+    @Override
+    @Async
+    public void sendRejectionEmail(String email, String name, String jobTitle, String notes) {
+        log.info("📧 [Rejection Email Triggered] Sending to: {}, Student Name: {}, Job: {}, Feedback: {}", email, name, jobTitle, notes);
+        String title = "Application Update - " + jobTitle;
+        
+        StringBuilder body = new StringBuilder();
+        body.append(String.format("<p>Hello %s,</p>", name));
+        body.append(String.format("<p>Thank you for your interest in the <strong>%s</strong> position. We appreciate the time and effort you invested in your application.</p>", jobTitle));
+        body.append("<p>After careful consideration, we regret to inform you that we will not be moving forward with your application at this time.</p>");
+        
+        if (notes != null && !notes.trim().isEmpty()) {
+            body.append("<div style=\"background: #f8fafc; padding: 15px; border-left: 4px solid #ef4444; margin: 20px 0;\">");
+            body.append("<p><strong>Feedback from the Hiring Team:</strong></p>");
+            body.append(String.format("<p style=\"white-space: pre-wrap; font-style: italic;\">%s</p>", notes.trim()));
+            body.append("</div>");
+        }
+        
+        body.append("<p>We wish you the very best in your job search and future professional endeavors.</p>");
+
+        String htmlContent = buildEmailTemplate("Application Update ✉️", body.toString());
+        sendEmailViaBrevo(email, name, title, htmlContent);
+    }
 }

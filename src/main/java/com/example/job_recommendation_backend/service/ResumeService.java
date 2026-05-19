@@ -11,7 +11,10 @@ public interface ResumeService {
 
     Map<String, Object> uploadResume(MultipartFile file, UUID userId);
 
-    ResponseEntity<InputStreamResource> downloadResume(UUID userID);
+    ResponseEntity<?> downloadResume(UUID userID);
 
     Map<String, Object> recommendJobs(UUID userId);
+
+    /** Returns the resume URL (Cloudinary or local path) for the authenticated user */
+    Map<String, String> getResumeUrl(UUID userId);
 }

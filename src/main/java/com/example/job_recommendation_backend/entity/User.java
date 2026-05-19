@@ -75,6 +75,7 @@ public class User {
     private LocalDateTime updatedAt;
 
     private String resumePath;
+    private String resumePublicId;
     private String profilePicture;
     private String bio;
 
