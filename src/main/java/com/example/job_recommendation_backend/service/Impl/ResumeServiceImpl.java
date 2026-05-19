@@ -1,5 +1,6 @@
 package com.example.job_recommendation_backend.service.Impl;
 
+import com.cloudinary.Cloudinary;
 import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.repository.JobRepository;
@@ -39,6 +40,8 @@ public class ResumeServiceImpl implements ResumeService {
 
     private final RestTemplate restTemplate;
 
+    private final Cloudinary cloudinary;
+
     @Value("${ml.api.url}")
     private String mlApiUrl;
 
@@ -55,24 +58,13 @@ public class ResumeServiceImpl implements ResumeService {
         try {
             validateFile(file);
 
-            String originalName = file.getOriginalFilename();
-            if (originalName == null) {
-                throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file name");
-            }
-            String sanitized = originalName.replaceAll("[^a-zA-Z0-9_.-]", "_");
-            String filename = System.currentTimeMillis() + "-" + sanitized;
-
-            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-            Path filePath = uploadPath.resolve(filename).normalize();
-
-            if (!filePath.startsWith(uploadPath)) {
-                throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file path");
-            }
-
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("resume", new FileSystemResource(filePath.toFile()));
+            body.add("resume", new ByteArrayResource(file.getBytes()) {
+                @Override
+                public String getFilename() {
+                    return file.getOriginalFilename();
+                }
+            });
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -102,12 +94,32 @@ public class ResumeServiceImpl implements ResumeService {
                 User user = userRepository.findById(userId)
                         .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
 
-                if (user.getResumePath() != null) {
+                // Delete old resume from Cloudinary if it exists
+                if (user.getResumePublicId() != null && !user.getResumePublicId().isEmpty()) {
+                    try {
+                        cloudinary.uploader().destroy(user.getResumePublicId(), Collections.emptyMap());
+                        log.info("🗑️ Deleted old resume from Cloudinary: {}", user.getResumePublicId());
+                    } catch (Exception e) {
+                        log.warn("⚠️ Failed to delete old resume from Cloudinary: {}", e.getMessage());
+                    }
+                } else if (user.getResumePath() != null && !user.getResumePath().startsWith("http")) {
+                    // Fallback to delete local file if they are migrating from local storage
+                    Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
                     Path oldPath = uploadPath.resolve(user.getResumePath());
                     Files.deleteIfExists(oldPath);
                 }
 
-                user.setResumePath(filename);
+                // Upload new resume to Cloudinary
+                Map<String, Object> uploadOptions = new HashMap<>();
+                uploadOptions.put("folder", "skillspark_resumes");
+                uploadOptions.put("resource_type", "auto");
+                
+                Map uploadResult = cloudinary.uploader().upload(file.getBytes(), uploadOptions);
+                String secureUrl = (String) uploadResult.get("secure_url");
+                String publicId = (String) uploadResult.get("public_id");
+
+                user.setResumePath(secureUrl);
+                user.setResumePublicId(publicId);
 
                 Object skillsObj = mlData.get("skills");
                 if (skillsObj instanceof List<?>) {
@@ -124,7 +136,7 @@ public class ResumeServiceImpl implements ResumeService {
                 }
 
                 userRepository.save(user);
-                log.info("💾 User profile updated successfully with new resume and skills");
+                log.info("💾 User profile updated successfully with new Cloudinary resume and skills");
             }
 
             return mlData;
@@ -153,22 +165,30 @@ public class ResumeServiceImpl implements ResumeService {
                 throw new CustomApiException(HttpStatus.NOT_FOUND, "Resume not found");
             }
 
-            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-            Path filePath = uploadPath.resolve(filename).normalize();
+            Resource resource;
+            String downloadName;
 
-            if (!filePath.startsWith(uploadPath)) {
-                throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file path");
+            if (filename.startsWith("http")) {
+                resource = new UrlResource(filename);
+                downloadName = "resume_" + user.getName().replaceAll("\\s+", "_") + ".pdf";
+            } else {
+                Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+                Path filePath = uploadPath.resolve(filename).normalize();
+
+                if (!filePath.startsWith(uploadPath)) {
+                    throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file path");
+                }
+
+                if (!Files.exists(filePath)) {
+                    throw new CustomApiException(HttpStatus.NOT_FOUND, "File not found");
+                }
+                resource = new UrlResource(filePath.toUri());
+                downloadName = filename;
             }
-
-            if (!Files.exists(filePath)) {
-                throw new CustomApiException(HttpStatus.NOT_FOUND, "File not found");
-            }
-
-            Resource resource = new UrlResource(filePath.toUri());
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + filename + "\"")
+                            "attachment; filename=\"" + downloadName + "\"")
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(new InputStreamResource(resource.getInputStream()));
 
