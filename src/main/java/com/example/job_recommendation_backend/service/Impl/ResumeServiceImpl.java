@@ -27,6 +27,8 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.concurrent.CompletableFuture;
+import java.net.URI;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -35,11 +37,8 @@ import lombok.RequiredArgsConstructor;
 public class ResumeServiceImpl implements ResumeService {
 
     private final UserRepository userRepository;
-
     private final JobRepository jobRepository;
-
     private final RestTemplate restTemplate;
-
     private final Cloudinary cloudinary;
 
     @Value("${ml.api.url}")
@@ -54,72 +53,100 @@ public class ResumeServiceImpl implements ResumeService {
 
     @Override
     public Map<String, Object> uploadResume(MultipartFile file, UUID userId) {
-
         try {
             validateFile(file);
 
-            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("resume", new ByteArrayResource(file.getBytes()) {
-                @Override
-                public String getFilename() {
-                    return file.getOriginalFilename();
-                }
-            });
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-            HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
-
-            Map<String, Object> mlData = new HashMap<>();
-            
-            if (mlApiUrl != null && !mlApiUrl.isEmpty()) {
-                try {
-                    ResponseEntity<Map> response = restTemplate.postForEntity(
-                            mlApiUrl + "/parse_resume",
-                            request,
-                            Map.class
-                    );
-                    mlData = response.getBody();
-                    log.info("📄 ML Resume Parse Result: {}", mlData);
-                } catch (Exception e) {
-                    log.warn("⚠️ ML Resume Parsing failed: {}. Continuing with file upload only.", e.getMessage());
-                }
-            } else {
-                log.info("ℹ️ ML API URL not provided, skipping resume parsing.");
+            User user = null;
+            if (userId != null) {
+                user = userRepository.findById(userId)
+                        .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
             }
 
-            if (userId != null && mlData != null) {
+            final User finalUser = user;
+            byte[] fileBytes = file.getBytes();
+            String originalFilename = file.getOriginalFilename();
 
-                User user = userRepository.findById(userId)
-                        .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
-
-                // Delete old resume from Cloudinary if it exists
-                if (user.getResumePublicId() != null && !user.getResumePublicId().isEmpty()) {
+            // Task 1: Send to ML API
+            CompletableFuture<Map<String, Object>> mlTask = CompletableFuture.supplyAsync(() -> {
+                Map<String, Object> mlData = new HashMap<>();
+                if (mlApiUrl != null && !mlApiUrl.isEmpty()) {
                     try {
-                        cloudinary.uploader().destroy(user.getResumePublicId(), Collections.emptyMap());
-                        log.info("🗑️ Deleted old resume from Cloudinary: {}", user.getResumePublicId());
+                        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+                        body.add("resume", new ByteArrayResource(fileBytes) {
+                            @Override
+                            public String getFilename() {
+                                return originalFilename;
+                            }
+                        });
+
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+                        HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
+
+                        ResponseEntity<Map> response = restTemplate.postForEntity(
+                                mlApiUrl + "/parse_resume",
+                                request,
+                                Map.class);
+                        mlData = response.getBody() != null ? response.getBody() : new HashMap<>();
+                        log.info("📄 ML Resume Parse Result: {}", mlData);
                     } catch (Exception e) {
-                        log.warn("⚠️ Failed to delete old resume from Cloudinary: {}", e.getMessage());
+                        log.warn("⚠️ ML Resume Parsing failed: {}", e.getMessage());
                     }
-                } else if (user.getResumePath() != null && !user.getResumePath().startsWith("http")) {
-                    // Fallback to delete local file if they are migrating from local storage
-                    Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-                    Path oldPath = uploadPath.resolve(user.getResumePath());
-                    Files.deleteIfExists(oldPath);
                 }
+                return mlData;
+            });
 
-                // Upload new resume to Cloudinary
-                Map<String, Object> uploadOptions = new HashMap<>();
-                uploadOptions.put("folder", "skillspark_resumes");
-                uploadOptions.put("resource_type", "auto");
-                
-                Map uploadResult = cloudinary.uploader().upload(file.getBytes(), uploadOptions);
-                String secureUrl = (String) uploadResult.get("secure_url");
-                String publicId = (String) uploadResult.get("public_id");
+            // Task 2: Upload to Cloudinary
+            CompletableFuture<Map<String, String>> cloudinaryTask = CompletableFuture.supplyAsync(() -> {
+                Map<String, String> cloudData = new HashMap<>();
+                if (finalUser != null) {
+                    // ✅ DO NOT delete the old Cloudinary resume.
+                    // Old applications hold a snapshot URL pointing to the previous resume.
+                    // Deleting it would break recruiter access to that application's resume.
+                    //
+                    // If the old path was a local file (pre-Cloudinary), clean it up.
+                    if (finalUser.getResumePath() != null && !finalUser.getResumePath().startsWith("http")) {
+                        try {
+                            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+                            Path oldPath = uploadPath.resolve(finalUser.getResumePath());
+                            Files.deleteIfExists(oldPath);
+                            log.info("🗑️ Cleaned up old local resume file");
+                        } catch (Exception e) {
+                            log.warn("⚠️ Failed to delete old local resume file");
+                        }
+                    }
 
-                user.setResumePath(secureUrl);
-                user.setResumePublicId(publicId);
+                    // Upload new resume with a unique public_id (userId + timestamp)
+                    // so each version is stored separately and application snapshots remain valid.
+                    try {
+                        String uniquePublicId = "skillspark_resumes/" + finalUser.getId() + "_" + System.currentTimeMillis();
+                        Map<String, Object> uploadOptions = new HashMap<>();
+                        uploadOptions.put("public_id", uniquePublicId);
+                        uploadOptions.put("resource_type", "raw"); // raw = correct type for PDFs/docs
+                        uploadOptions.put("type", "upload");        // publicly accessible
+                        uploadOptions.put("access_mode", "public");
+                        uploadOptions.put("overwrite", false);      // never overwrite — always new file
+                        Map uploadResult = cloudinary.uploader().upload(fileBytes, uploadOptions);
+                        cloudData.put("secure_url", (String) uploadResult.get("secure_url"));
+                        cloudData.put("public_id", (String) uploadResult.get("public_id"));
+                        log.info("☁️ Resume uploaded to Cloudinary: {}", cloudData.get("public_id"));
+                    } catch (Exception e) {
+                        throw new RuntimeException("Cloudinary upload failed", e);
+                    }
+                }
+                return cloudData;
+            });
+
+            // Wait for both concurrent tasks
+            CompletableFuture.allOf(mlTask, cloudinaryTask).join();
+
+            Map<String, Object> mlData = mlTask.get();
+            Map<String, String> cloudData = cloudinaryTask.get();
+
+            // Finalize and save DB
+            if (finalUser != null && cloudData.containsKey("secure_url")) {
+                finalUser.setResumePath(cloudData.get("secure_url"));
+                finalUser.setResumePublicId(cloudData.get("public_id"));
 
                 Object skillsObj = mlData.get("skills");
                 if (skillsObj instanceof List<?>) {
@@ -129,13 +156,11 @@ public class ResumeServiceImpl implements ResumeService {
                             .filter(s -> !s.isEmpty())
                             .collect(Collectors.toList());
 
-                    log.info("✅ Extracted {} skills for user {}: {}", skills.size(), user.getEmail(), skills);
-                    user.setSkills(skills);
-                } else {
-                    log.warn("⚠️ No skills list found in ML response for user {}", user.getEmail());
+                    log.info("✅ Extracted {} skills for user {}: {}", skills.size(), finalUser.getEmail(), skills);
+                    finalUser.setSkills(skills);
                 }
 
-                userRepository.save(user);
+                userRepository.save(finalUser);
                 log.info("💾 User profile updated successfully with new Cloudinary resume and skills");
             }
 
@@ -147,8 +172,25 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     @Override
-    public ResponseEntity<InputStreamResource> downloadResume(UUID userId) {
+    public Map<String, String> getResumeUrl(UUID userId) {
+        UUID currentUserId = UserContext.get().getUserId();
+        if (!currentUserId.equals(userId)) {
+            throw new CustomApiException(HttpStatus.FORBIDDEN, "Not authorized");
+        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
+        String path = user.getResumePath();
+        if (path == null || path.isBlank()) {
+            throw new CustomApiException(HttpStatus.NOT_FOUND, "No resume uploaded yet. Please upload your resume first.");
+        }
+        return Map.of(
+            "url", path,
+            "isCloud", String.valueOf(path.startsWith("http"))
+        );
+    }
 
+    @Override
+    public ResponseEntity<?> downloadResume(UUID userId) {
         try {
             UUID currentUserId = UserContext.get().getUserId();
 
@@ -161,45 +203,55 @@ public class ResumeServiceImpl implements ResumeService {
 
             String filename = user.getResumePath();
 
-            if (filename == null) {
-                throw new CustomApiException(HttpStatus.NOT_FOUND, "Resume not found");
+            if (filename == null || filename.isBlank()) {
+                throw new CustomApiException(HttpStatus.NOT_FOUND, "No resume uploaded yet");
             }
 
             Resource resource;
             String downloadName;
 
             if (filename.startsWith("http")) {
-                resource = new UrlResource(filename);
+                // Cloudinary URL — proxy download through backend
+                RestTemplate rt = new RestTemplate();
+                byte[] fileBytes = rt.getForObject(filename, byte[].class);
+                if (fileBytes == null) {
+                    throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to download from Cloudinary");
+                }
                 downloadName = "resume_" + user.getName().replaceAll("\\s+", "_") + ".pdf";
+                resource = new ByteArrayResource(fileBytes);
             } else {
+                // Local file fallback
                 Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
                 Path filePath = uploadPath.resolve(filename).normalize();
 
                 if (!filePath.startsWith(uploadPath)) {
                     throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file path");
                 }
-
                 if (!Files.exists(filePath)) {
-                    throw new CustomApiException(HttpStatus.NOT_FOUND, "File not found");
+                    throw new CustomApiException(HttpStatus.NOT_FOUND, "Resume file not found");
                 }
                 resource = new UrlResource(filePath.toUri());
                 downloadName = filename;
             }
 
+            // Use inline so iframe/viewer can render the PDF directly;
+            // the frontend Download button uses the blob URL to force a save.
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + downloadName + "\"")
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + downloadName + "\"")
+                    .contentType(MediaType.APPLICATION_PDF)
                     .body(new InputStreamResource(resource.getInputStream()));
 
+        } catch (CustomApiException ce) {
+            throw ce;
         } catch (Exception e) {
-            throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error downloading file");
+            log.error("❌ Error downloading resume", e);
+            throw new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error downloading resume");
         }
     }
 
+
     @Override
     public Map<String, Object> recommendJobs(UUID userId) {
-
         try {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
@@ -208,8 +260,6 @@ public class ResumeServiceImpl implements ResumeService {
                 throw new CustomApiException(HttpStatus.NOT_FOUND, "User skills not found");
             }
 
-            // TODO : have to think again about this query this would be slow query in big
-            // db
             List<Job> jobs = jobRepository.findAll();
 
             List<Map<String, Object>> jobList = jobs.stream().map(job -> {
@@ -230,7 +280,6 @@ public class ResumeServiceImpl implements ResumeService {
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
             if (mlApiUrl == null || mlApiUrl.isEmpty()) {
-                log.warn("ℹ️ ML API URL not provided, cannot recommend jobs via ML.");
                 Map<String, Object> fallbackData = new HashMap<>();
                 fallbackData.put("matches", new ArrayList<>());
                 return fallbackData;
@@ -241,10 +290,8 @@ public class ResumeServiceImpl implements ResumeService {
                         mlApiUrl + "/match_jobs",
                         request,
                         Map.class);
-
                 return response.getBody();
             } catch (Exception err) {
-                log.warn("⚠️ ML Job Recommendation failed: {}. Returning empty matches.", err.getMessage());
                 Map<String, Object> fallbackData = new HashMap<>();
                 fallbackData.put("matches", new ArrayList<>());
                 return fallbackData;
@@ -255,25 +302,19 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     private void validateFile(MultipartFile file) {
-
         if (file == null || file.isEmpty()) {
             throw new CustomApiException(HttpStatus.BAD_REQUEST, "No file uploaded");
         }
-
         if (file.getSize() > 5 * 1024 * 1024) {
             throw new CustomApiException(HttpStatus.valueOf(413), "File too large");
         }
-
         String originalName = file.getOriginalFilename();
         if (originalName == null) {
             throw new CustomApiException(HttpStatus.BAD_REQUEST, "Invalid file name");
         }
-
         String filename = originalName.toLowerCase();
         String ext = filename.substring(filename.lastIndexOf("."));
-
         List<String> allowed = List.of(".pdf", ".doc", ".docx", ".txt");
-
         if (!allowed.contains(ext)) {
             throw new CustomApiException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
                     "Only PDF, DOC, DOCX and TXT files are allowed");
@@ -281,9 +322,7 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     private CustomApiException handleError(Exception err, String context) {
-
         System.err.println("❌ " + context + " error: " + err.getMessage());
-
         if (err instanceof org.springframework.web.client.HttpStatusCodeException ex) {
             return new CustomApiException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Request failed (API error): " + ex.getResponseBodyAsString());

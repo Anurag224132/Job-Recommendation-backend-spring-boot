@@ -30,9 +30,14 @@ public class ResumeController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/url")
+    public ResponseEntity<Map<String, String>> getResumeUrl() {
+        return ResponseEntity.ok(resumeService.getResumeUrl(authUtil.getCurrentUserId()));
+    }
+
 
     @GetMapping("/download")
-    public ResponseEntity<InputStreamResource> downloadResume() {
+    public ResponseEntity<?> downloadResume() {
         return resumeService.downloadResume(authUtil.getCurrentUserId());
     }
 
