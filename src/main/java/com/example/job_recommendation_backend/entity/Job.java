@@ -46,6 +46,7 @@ public class Job {
     @NotBlank(message = "Job title is required")
     private String title;
     @NotBlank(message = "Job description is required")
+    @Column(columnDefinition = "TEXT")
     private String description;
     @ElementCollection(fetch = FetchType.LAZY)
     @org.hibernate.annotations.BatchSize(size = 50)
