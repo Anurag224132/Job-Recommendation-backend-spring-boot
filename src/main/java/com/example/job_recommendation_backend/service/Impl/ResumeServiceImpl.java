@@ -96,14 +96,12 @@ public class ResumeServiceImpl implements ResumeService {
                 return mlData;
             });
 
-            // Task 2: Upload to Cloudinary
             CompletableFuture<Map<String, String>> cloudinaryTask = CompletableFuture.supplyAsync(() -> {
                 Map<String, String> cloudData = new HashMap<>();
                 if (finalUser != null) {
                     // ✅ DO NOT delete the old Cloudinary resume.
                     // Old applications hold a snapshot URL pointing to the previous resume.
                     // Deleting it would break recruiter access to that application's resume.
-                    //
                     // If the old path was a local file (pre-Cloudinary), clean it up.
                     if (finalUser.getResumePath() != null && !finalUser.getResumePath().startsWith("http")) {
                         try {
