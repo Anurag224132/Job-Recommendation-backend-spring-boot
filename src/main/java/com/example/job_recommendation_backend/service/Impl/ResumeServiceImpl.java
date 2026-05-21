@@ -96,7 +96,6 @@ public class ResumeServiceImpl implements ResumeService {
                 return mlData;
             });
 
-            // Task 2: Upload to Cloudinary
             CompletableFuture<Map<String, String>> cloudinaryTask = CompletableFuture.supplyAsync(() -> {
                 Map<String, String> cloudData = new HashMap<>();
                 if (finalUser != null) {
