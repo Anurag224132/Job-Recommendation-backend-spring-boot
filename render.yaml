@@ -16,10 +16,6 @@ services:
       - key: DB_PASSWORD
         sync: false
       - key: JWT_SECRET
-        generateValue: true
-      - key: MAIL_USERNAME
-        sync: false
-      - key: MAIL_PASSWORD
         sync: false
       - key: ML_API_URL
         sync: false
@@ -29,16 +25,26 @@ services:
         sync: false
       - key: GOOGLE_REFRESH_TOKEN
         sync: false
-      - key: REDIS_HOST
-        value: localhost
-      - key: REDIS_PORT
-        value: 6379
+      - key: REDIS_URL
+        sync: false
       - key: AWS_ACCESS_KEY
         sync: false
       - key: AWS_SECRET_KEY
         sync: false
       - key: NOTIFICATION_QUEUE
         value: coinshift-notification-queue
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_FROM_EMAIL
+        sync: false
+      - key: BREVO_FROM_NAME
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
       - key: GRAFANA_OTLP_URL
         sync: false
       - key: GRAFANA_OTLP_AUTH
