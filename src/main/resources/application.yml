@@ -33,6 +33,7 @@ spring:
 ml:
   api:
     url: ${ML_API_URL}
+    key: ${ML_API_KEY:}
 
 # Google OAuth Configuration
 google:
