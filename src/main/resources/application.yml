@@ -24,14 +24,6 @@ spring:
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
 
-  cloud:
-    aws:
-      region:
-        static: eu-north-1
-      credentials:
-        access-key: ${AWS_ACCESS_KEY}
-        secret-key: ${AWS_SECRET_KEY}
-
   servlet:
     multipart:
       max-file-size: 10MB
@@ -53,10 +45,6 @@ google:
 # Security Configuration
 jwt:
   secret: ${JWT_SECRET}
-
-# Queue Configuration
-queue:
-  notification: ${NOTIFICATION_QUEUE:coinshift-notification-queue}
 
 brevo:
   api-key: ${BREVO_API_KEY:}
