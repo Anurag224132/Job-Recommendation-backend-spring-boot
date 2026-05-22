@@ -48,7 +48,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void initiateRegistration(RegisterUserDto registerUserDto) {
 
-        if (userService.getUserByEmail(registerUserDto.getEmail()) != null) {
+        if (userService.existsByEmail(registerUserDto.getEmail())) {
             throw new CustomApiException(HttpStatus.CONFLICT, "User with this email already exists");
         }
         sendAndStoreOtp(registerUserDto.getEmail(), registerUserDto.getName(), OTP_SIGNUP_PREFIX);
