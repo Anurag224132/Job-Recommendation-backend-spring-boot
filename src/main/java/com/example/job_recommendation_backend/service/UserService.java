@@ -18,6 +18,8 @@ public interface UserService {
 
     User getUserByEmail(String email);
 
+    boolean existsByEmail(String email);
+
     User updateUser(User user);
 
     Page<UserResponseDto> getAllUsers(Pageable pageable);

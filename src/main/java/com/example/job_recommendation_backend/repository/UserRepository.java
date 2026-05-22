@@ -23,6 +23,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmailAndDeletedAtIsNull(String email);
 
+    boolean existsByEmailAndDeletedAtIsNull(String email);
+
     @Query("SELECT new com.example.job_recommendation_backend.DTO.UserResponseDto(u.id, u.name, u.email, u.role) FROM User u")
     Page<UserResponseDto> findAllUsers(Pageable pageable);
 
