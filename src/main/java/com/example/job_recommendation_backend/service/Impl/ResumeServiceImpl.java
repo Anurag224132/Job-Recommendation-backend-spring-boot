@@ -44,6 +44,9 @@ public class ResumeServiceImpl implements ResumeService {
     @Value("${ml.api.url}")
     private String mlApiUrl;
 
+    @Value("${ml.api.key}")
+    private String mlApiKey;
+
     private final String uploadDir = System.getProperty("user.dir") + "/uploads/resumes";
 
     @PostConstruct
@@ -81,6 +84,9 @@ public class ResumeServiceImpl implements ResumeService {
 
                         HttpHeaders headers = new HttpHeaders();
                         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+                        if (mlApiKey != null && !mlApiKey.isEmpty()) {
+                            headers.set("X-API-Key", mlApiKey);
+                        }
                         HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
 
                         ResponseEntity<Map> response = restTemplate.postForEntity(
@@ -274,6 +280,9 @@ public class ResumeServiceImpl implements ResumeService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            if (mlApiKey != null && !mlApiKey.isEmpty()) {
+                headers.set("X-API-Key", mlApiKey);
+            }
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 

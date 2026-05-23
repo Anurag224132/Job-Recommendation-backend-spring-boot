@@ -56,11 +56,11 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
             """)
     Page<ApplicationResponseDto> findAllApplications(Pageable pageable);
 
-    @EntityGraph(attributePaths = { "user", "job", "job.user" })
+    @EntityGraph(attributePaths = { "user", "job", "job.user", "job.requiredSkills" })
     @Query("SELECT ap FROM Application ap JOIN ap.job j WHERE j.user.id = :userId")
     Page<Application> findActiveApplicationsForRecruiter(@Param("userId") UUID userId, Pageable pageable);
 
-    @EntityGraph(attributePaths = { "user", "job", "job.user" })
+    @EntityGraph(attributePaths = { "user", "job", "job.user", "job.requiredSkills" })
     @Query("select ap from Application ap join ap.user u where u.id = :userId")
     Page<Application> findActiveApplicationsForStudent(@Param("userId") UUID userId, Pageable pageable);
 
@@ -101,14 +101,14 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
             """)
     List<JobAnalyticsDto> getJobAnalytics(UUID userId);
 
-    @EntityGraph(attributePaths = { "user", "job", "job.user" })
+    @EntityGraph(attributePaths = { "user", "job", "job.user", "job.requiredSkills" })
     @Query("""
                 SELECT a FROM Application a
                 WHERE a.job.id = :jobId
             """)
     Page<Application> findApplicantsByJobId(@Param("jobId") UUID jobId, Pageable pageable);
 
-    @EntityGraph(attributePaths = { "user", "job", "job.user" })
+    @EntityGraph(attributePaths = { "user", "job", "job.user", "job.requiredSkills" })
     @Query("""
                 SELECT a FROM Application a
                 WHERE a.job.user.id = :recruiterId
