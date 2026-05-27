@@ -8,7 +8,6 @@ import com.example.job_recommendation_backend.repository.UserRepository;
 import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.ResumeService;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.*;
 import org.springframework.http.*;
@@ -28,7 +27,6 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.concurrent.CompletableFuture;
-import java.net.URI;
 import lombok.RequiredArgsConstructor;
 
 @Service

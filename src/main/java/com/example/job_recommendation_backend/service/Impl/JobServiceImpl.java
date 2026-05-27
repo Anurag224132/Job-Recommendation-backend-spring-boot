@@ -15,7 +15,6 @@ import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.JobService;
 import com.example.job_recommendation_backend.service.UserService;
 import jakarta.persistence.criteria.Predicate;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
