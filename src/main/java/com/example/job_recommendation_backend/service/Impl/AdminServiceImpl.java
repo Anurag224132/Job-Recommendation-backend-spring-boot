@@ -7,7 +7,6 @@ import com.example.job_recommendation_backend.entity.User;
 import com.example.job_recommendation_backend.enums.Role;
 import com.example.job_recommendation_backend.repository.projection.*;
 import com.example.job_recommendation_backend.service.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

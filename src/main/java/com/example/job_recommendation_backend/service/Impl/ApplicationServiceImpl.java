@@ -11,7 +11,6 @@ import com.example.job_recommendation_backend.repository.projection.StudentAnaly
 import com.example.job_recommendation_backend.security.UserContext;
 import com.example.job_recommendation_backend.service.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.dao.DataIntegrityViolationException;

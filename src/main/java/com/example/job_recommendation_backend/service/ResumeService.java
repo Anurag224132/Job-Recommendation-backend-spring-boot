@@ -1,6 +1,5 @@
 package com.example.job_recommendation_backend.service;
 
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 

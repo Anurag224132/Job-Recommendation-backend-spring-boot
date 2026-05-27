@@ -2,7 +2,6 @@ package com.example.job_recommendation_backend.controller;
 
 import com.example.job_recommendation_backend.DTO.CreateJobRequestDto;
 import com.example.job_recommendation_backend.DTO.JobResponseDto;
-import com.example.job_recommendation_backend.entity.Job;
 import com.example.job_recommendation_backend.service.JobService;
 import com.example.job_recommendation_backend.utility.AuthUtil;
 import com.example.job_recommendation_backend.utility.PaginationUtil;
