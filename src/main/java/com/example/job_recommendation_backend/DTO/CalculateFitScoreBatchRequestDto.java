@@ -15,4 +15,5 @@ import java.util.UUID;
 public class CalculateFitScoreBatchRequestDto {
     private List<UUID> jobIds;
     private List<String> resumeSkills;
+    
 }
