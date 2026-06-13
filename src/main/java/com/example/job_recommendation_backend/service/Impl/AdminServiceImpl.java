@@ -32,6 +32,7 @@ public class AdminServiceImpl implements AdminService {
     public Page<UserResponseDto> getAllUsers(Pageable pageable) {
         return userService.getAllUsers(pageable);
     }
+    
 
     @Override
     public String deleteUser(UUID id) {
