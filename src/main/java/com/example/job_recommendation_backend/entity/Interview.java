@@ -64,5 +64,4 @@ public class Interview {
     @JoinColumn(name = "job_id")
     private Job job;
 
-
 }
