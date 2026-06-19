@@ -36,7 +36,6 @@ public class ApplicationController {
         this.applicationService = applicationService;
     }
 
-
     @PostMapping("/calculate-fit")
     public ResponseEntity<Map<String, Long>> calculateFitScore(@RequestBody CalculateFitScoreDto request) {
         long score = applicationService.calculateFitScore(request);
