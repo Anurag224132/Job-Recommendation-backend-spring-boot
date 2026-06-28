@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 
 @Entity
 public class ContactMessage {
+    
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
